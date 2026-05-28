@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <!-- Meta tag per SEO e PWA -->
+    <title>Meridiana Digitale & Bussola Solare</title>
+    <meta name="description" content="Una meridiana digitale interattiva e una bussola solare avanzata. Trova il vero Nord astronomico calibrando l'ombra del sole sul tuo smartphone.">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Tailwind CSS (CDN) e Foglio di Stile Personalizzato -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- HEADER: Titolo, data e ora in tempo reale -->
+    <header class="w-full p-4 bg-slate-900 border-b border-slate-800 shadow-md z-10">
+        <div class="max-w-md mx-auto flex flex-col gap-1">
+            <div class="flex justify-between items-center">
+                <h1 class="text-base font-black tracking-wider text-amber-400 flex items-center gap-2" id="main-title">
+                    ☀️ MERIDIANA & NORD
+                </h1>
+                <span id="time-display" class="text-xs font-mono font-bold bg-slate-950 px-2.5 py-1 rounded-md text-amber-300 border border-amber-500/20 shadow-inner">00:00:00</span>
+            </div>
+            <!-- Stato sintetico del Sole -->
+            <div id="sun-summary" class="text-xs font-mono text-slate-400 mt-1 flex justify-between">
+                <span>Azimut: <b id="lbl-azimut" class="text-amber-400">---°</b></span>
+                <span>Altezza: <b id="lbl-altezza" class="text-amber-400">---°</b></span>
+                <span>Posizione: <b id="lbl-pos" class="text-cyan-400">Roma (Default)</b></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- DIAGNOSTICA DEI SENSORI (Compatta e chiarissima) -->
+    <section class="w-full px-4 pt-3 z-10 max-w-md mx-auto">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-2">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Stato Connessione e Sensori</span>
+                <span id="status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Inizializzazione</span>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono">
+                <div class="flex items-center gap-1.5 text-slate-300">
+                    <span id="diag-https-icon">⚪</span> Sicurezza (HTTPS):
+                </div>
+                <div id="diag-https-val" class="text-right font-bold text-slate-450">Verifica...</div>
+
+                <div class="flex items-center gap-1.5 text-slate-300">
+                    <span id="diag-sensors-icon">⚪</span> Giroscopio/Bussola:
+                </div>
+                <div id="diag-sensors-val" class="text-right font-bold text-slate-455">Verifica...</div>
+            </div>
+            
+            <!-- Messaggio d'aiuto per sbloccare i sensori -->
+            <div id="help-alert" class="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-lg p-2 mt-1 hidden">
+                ⚠️ I sensori sono bloccati dal browser. Premi il pulsante azzurro in basso per attivarli.
+            </div>
+        </div>
+    </section>
+
+    <!-- AREA CENTRALE: Grafica della Meridiana e Livella Integrata -->
+    <main class="flex-grow flex flex-col items-center justify-center relative px-4 w-full max-w-md mx-auto">
+        
+        <!-- Contenitore del Canvas -->
+        <div class="relative w-full aspect-square max-w-[320px] md:max-w-[360px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl">
+            <!-- Canvas ad alta risoluzione -->
+            <canvas id="dialCanvas" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
+        </div>
+
+        <!-- Indicatori Angolari Digitali di Inclinazione del Telefono -->
+        <div class="flex justify-center gap-6 mt-3 text-xs font-mono bg-slate-900 border border-slate-800 px-4 py-1.5 rounded-full text-slate-300 shadow">
+            <div>Inclinazione X: <span id="txt-tilt-x" class="text-emerald-400 font-bold">0.0°</span></div>
+            <div>Inclinazione Y: <span id="txt-tilt-y" class="text-emerald-400 font-bold">0.0°</span></div>
+        </div>
+    </main>
+
+    <!-- FOOTER: Controlli e Selezione della modalità -->
+    <footer class="w-full p-4 bg-slate-900 border-t border-slate-800 backdrop-blur-md z-10 flex flex-col gap-3">
+        <div class="max-w-md mx-auto w-full flex flex-col gap-3">
+            
+            <!-- Pulsante Principale di Sblocco Sensori (Spicca moltissimo) -->
+            <button id="btn-sensors" class="w-full bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg neon-glow-cyan flex items-center justify-center gap-2">
+                🚀 SBLOCCA BUSSOLA & LIVELLA
+            </button>
+
+            <!-- Selettore della Modalità (Bussola automatica o trascinamento manuale dell'ombra) -->
+            <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <button id="btn-auto" class="flex-1 py-2 text-xs font-semibold rounded-md transition-all bg-amber-500 text-slate-950 font-bold neon-glow-amber">
+                    🔄 Bussola Automatica
+                </button>
+                <button id="btn-manual" class="flex-1 py-2 text-xs font-semibold rounded-md transition-all text-slate-400 hover:text-slate-200">
+                    👆 Allineamento Ombra
+                </button>
+            </div>
+
+            <!-- Selezione della Posizione Geografica per i calcoli solari -->
+            <div class="flex gap-2 items-center justify-between text-xs">
+                <div class="flex-grow">
+                    <select id="city-select" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        <option value="roma" selected>Roma (Predefinita)</option>
+                        <option value="milano">Milano</option>
+                        <option value="napoli">Napoli</option>
+                        <option value="torino">Torino</option>
+                        <option value="palermo">Palermo</option>
+                        <option value="bologna">Bologna</option>
+                        <option value="firenze">Firenze</option>
+                        <option value="bari">Bari</option>
+                        <option value="gps">📡 Rileva GPS (In tempo reale)</option>
+                    </select>
+                </div>
+                <div id="coord-info" class="text-[9px] text-slate-500 font-mono text-right shrink-0">
+                    Lat: 41.9028 | Lon: 12.4964
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script di Funzionamento Esterno -->
+    <script src="app.js"></script>
+</body>
+</html>
