@@ -1,5 +1,4 @@
 // Stato dell'applicazione con valori di default su Ponte di Piave (Treviso)
-// Tutti i valori numerici di inclinazione sono esplicitamente inizializzati a 0 per prevenire calcoli con undefined o NaN
 const state = {
     lat: 45.7272,       // Latitudine Ponte di Piave
     lon: 12.4632,       // Longitudine Ponte di Piave
@@ -41,13 +40,13 @@ const inputLon = document.getElementById('input-lon');
 const helpAlert = document.getElementById('help-alert');
 const statusBadge = document.getElementById('status-badge');
 
-// Pulsanti e contenitore modale diagnostica
+// Pulsanti e modale diagnostica
 const btnToggleDiag = document.getElementById('btn-toggle-diag');
 const btnCloseDiag = document.getElementById('btn-close-diag');
 const btnCloseDiagBottom = document.getElementById('btn-close-diag-bottom');
 const diagModal = document.getElementById('diag-modal');
 
-// Elementi diagnostica (dentro la modale)
+// Elementi diagnostica (modale)
 const diagHttpsIcon = document.getElementById('diag-https-icon');
 const diagHttpsVal = document.getElementById('diag-https-val');
 const diagSensorsIcon = document.getElementById('diag-sensors-icon');
@@ -61,7 +60,6 @@ function resizeCanvas() {
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
-        draw();
     } catch (e) {
         console.error("Errore ridimensionamento canvas:", e);
     }
@@ -133,7 +131,7 @@ function aggiornaInformazioniFuso(now) {
         let fusoNome = isDST ? "CEST (Ora Legale)" : "CET (Ora Solare)";
         tzDisplay.textContent = `${fusoNome} [UTC${sign}${offsetOre}]`;
     } catch (e) {
-        tzDisplay.textContent = "Fuso: Rilevamento in corso...";
+        tzDisplay.textContent = "Fuso: Rilevamento...";
     }
 }
 
@@ -194,14 +192,14 @@ function calcolaPosizioneSole() {
 
 // --- FUNZIONE DI AGGIORNAMENTO BOLLA LIVELLA ---
 function updateLevelBubble() {
-    // Controllo e fallback numerico per prevenire NaN ricorsivi
     const currentTiltX = Number(state.tiltX) || 0;
     const currentTiltY = Number(state.tiltY) || 0;
     
     if (isNaN(state.smoothTiltX)) state.smoothTiltX = 0;
     if (isNaN(state.smoothTiltY)) state.smoothTiltY = 0;
 
-    const damping = 0.2;
+    // A 60 FPS usiamo un damping leggermente inferiore (0.12) per renderla meravigliosamente fluida
+    const damping = 0.12;
     state.smoothTiltX += (currentTiltX - state.smoothTiltX) * damping;
     state.smoothTiltY += (currentTiltY - state.smoothTiltY) * damping;
 }
@@ -211,8 +209,6 @@ function draw() {
     try {
         const w = canvas.width / (window.devicePixelRatio || 1);
         const h = canvas.height / (window.devicePixelRatio || 1);
-        
-        // Protezione se il canvas ha dimensioni nulle
         if (w <= 0 || h <= 0) return;
         
         const cx = w / 2;
@@ -238,11 +234,13 @@ function draw() {
         if (state.magneticHeading !== null && !isNaN(state.magneticHeading)) {
             ctx.save();
             ctx.translate(cx, cy);
+            
+            // Angolo relativo basato sui gradi reali
             const magAngleRad = (state.magneticHeading - curHeading) * Math.PI / 180;
             ctx.rotate(magAngleRad);
 
-            ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+            ctx.lineWidth = 2.2;
             ctx.setLineDash([4, 4]);
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -250,7 +248,7 @@ function draw() {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            ctx.fillStyle = 'rgba(6, 182, 212, 0.7)';
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
             ctx.beginPath();
             ctx.moveTo(0, -r + 14);
             ctx.lineTo(-4, -r + 24);
@@ -258,7 +256,7 @@ function draw() {
             ctx.closePath();
             ctx.fill();
 
-            ctx.fillStyle = 'rgba(6, 182, 212, 0.8)';
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
             ctx.font = 'bold 7px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('N. MAGNETICO', 0, -r + 8);
@@ -484,9 +482,10 @@ function handleOrientation(event) {
         state.tiltX = event.gamma !== null ? event.gamma : 0;
         state.tiltY = event.beta !== null ? event.beta : 0;
 
-        if (event.webkitCompassHeading !== undefined) {
+        // Rilevamento magnetico per la freccia blu (compatibile assoluto per Android e iOS)
+        if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
             state.magneticHeading = event.webkitCompassHeading;
-        } else if (event.alpha !== null) {
+        } else if (event.alpha !== null && event.alpha !== undefined) {
             state.magneticHeading = (360 - event.alpha) % 360;
         }
 
@@ -498,13 +497,10 @@ function handleOrientation(event) {
         diagSensorsVal.className = "text-right font-bold text-emerald-400";
 
         helpAlert.classList.add('hidden');
-        statusBadge.textContent = "Livella Online";
+        statusBadge.textContent = "Sensori Online";
         statusBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-
-        updateLevelBubble();
-        draw();
     } catch (e) {
-        console.error("Errore gestione orientamento:", e);
+        console.error("Errore orientamento:", e);
     }
 }
 
@@ -514,6 +510,7 @@ async function sbloccaSensori() {
         btnSensors.textContent = "ATTIVAZIONE IN CORSO...";
         rilevaGPS();
 
+        // 1. Richiesta su iOS (con pop-up nativo)
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
             try {
                 const permission = await DeviceOrientationEvent.requestPermission();
@@ -531,6 +528,7 @@ async function sbloccaSensori() {
                 btnSensors.textContent = "ERRORE SENSORI";
             }
         } else {
+            // 2. Android (connessione diretta)
             connettiSensori();
             btnSensors.style.display = 'none';
         }
@@ -553,10 +551,9 @@ function rilevaGPS() {
                     lblPos.textContent = "GPS Attivo";
                     
                     calcolaPosizioneSole();
-                    draw();
                 },
                 (err) => {
-                    console.warn("GPS negato o non raggiungibile.");
+                    console.warn("GPS non raggiungibile.");
                 },
                 { enableHighAccuracy: true, timeout: 5000 }
             );
@@ -566,12 +563,13 @@ function rilevaGPS() {
     }
 }
 
+// Ascolto simultaneo dell'evento standard e assoluto per catturare la bussola su Android
 function connettiSensori() {
     try {
         window.addEventListener('deviceorientationabsolute', handleOrientation, true);
         window.addEventListener('deviceorientation', handleOrientation, true);
     } catch (e) {
-        console.error("Errore registrazione eventi sensori:", e);
+        console.error("Errore registrazione sensori:", e);
     }
 }
 
@@ -598,7 +596,6 @@ function dragMove(clientX, clientY) {
     const curAngle = getAngleFromCenter(clientX, clientY);
     const delta = curAngle - state.dragStartAngle;
     state.manualHeading = (state.dragStartHeading - delta + 360) % 360;
-    draw();
 }
 
 function dragEnd() {
@@ -637,7 +634,6 @@ function gestisciInputCoordinate() {
         }
 
         calcolaPosizioneSole();
-        draw();
     } catch (e) {
         console.error("Errore input coordinate:", e);
     }
@@ -648,17 +644,15 @@ inputLon.addEventListener('input', gestisciInputCoordinate);
 btnGpsTrigger.addEventListener('click', rilevaGPS);
 btnSensors.addEventListener('click', sbloccaSensori);
 
-// --- LOOP PRINCIPALE ED EVENTI DI AVVIO ---
-window.addEventListener('resize', resizeCanvas);
-
-function tick() {
+// --- LOOP DEDICATO ALL'OROLOGIO E ALL'ASTRONOMIA (1 VOLTA AL SECONDO) ---
+setInterval(() => {
     try {
         const now = new Date();
         
         // Aggiornamento display ora locale
         if (timeDisplay) timeDisplay.textContent = now.toLocaleTimeString('it-IT');
         
-        // Aggiornamento display ora UTC dinamico
+        // Aggiornamento display ora UTC
         if (utcDisplay) {
             const utcHours = String(now.getUTCHours()).padStart(2, '0');
             const utcMinutes = String(now.getUTCMinutes()).padStart(2, '0');
@@ -666,11 +660,20 @@ function tick() {
             utcDisplay.textContent = `${utcHours}:${utcMinutes}:${utcSeconds}`;
         }
         
-        // Aggiorna offset e fuso
         aggiornaInformazioniFuso(now);
         calcolaPosizioneSole();
+    } catch(e) {
+        console.error("Errore loop orologio:", e);
+    }
+}, 1000);
+
+// --- RENDERING LOOP GRAFICO AD ALTE PRESTAZIONI (60 FPS - REQUEST ANIMATION FRAME) ---
+// Questo garantisce una fluidità pazzesca ed immediata della bolla e del drag!
+function loopGrafico() {
+    try {
+        const now = new Date();
         
-        // Simulatore se non ci sono sensori fisici attivi
+        // Simulatore se non ci sono sensori fisici attivi (Micro oscillazione fluida)
         if (!state.hasHardwareSensors) {
             const t = now.getTime() / 1500;
             state.tiltX = Math.sin(t) * 1.5;
@@ -682,16 +685,24 @@ function tick() {
         updateLevelBubble();
         draw();
     } catch (e) {
-        console.error("Errore nel tick loop:", e);
+        console.error("Errore loop grafico:", e);
     }
+    requestAnimationFrame(loopGrafico);
 }
 
-// Prima inizializzazione
+// Avvio del loop grafico e prima inizializzazione
 try {
     resizeCanvas();
     eseguiDiagnostica();
-    setInterval(tick, 1000);
-    tick();
+    calcolaPosizioneSole();
+    
+    // Primo avvio orologio
+    const initialDate = new Date();
+    if (timeDisplay) timeDisplay.textContent = initialDate.toLocaleTimeString('it-IT');
+    aggiornaInformazioniFuso(initialDate);
+    
+    // Start loop grafico immediato
+    requestAnimationFrame(loopGrafico);
 } catch (e) {
     console.error("Errore inizializzazione:", e);
 }
