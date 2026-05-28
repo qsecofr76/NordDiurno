@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v6'; // Aggiornato a v6 per forzare il refresh immediato sui telefoni
+const CACHE_NAME = 'meridiana-v7'; // Aggiornato a v7 per forzare il refresh immediato sui telefoni
 const ASSETS = [
   './',
   './index.html',

@@ -232,38 +232,7 @@ function draw() {
         ctx.stroke();
         ctx.restore();
 
-        // --- DISEGNO DEL NORD MAGNETICO PASSIVO (FRECCIA BLU) ---
-        if (state.magneticHeading !== null && !isNaN(state.magneticHeading)) {
-            ctx.save();
-            ctx.translate(cx, cy);
-            
-            // Angolo relativo basato sui gradi reali (rispetto al telefono fisso)
-            const magAngleRad = -state.magneticHeading * Math.PI / 180;
-            ctx.rotate(magAngleRad);
-
-            ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
-            ctx.lineWidth = 2.2;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, -r + 28);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
-            ctx.beginPath();
-            ctx.moveTo(0, -r + 14);
-            ctx.lineTo(-4, -r + 24);
-            ctx.lineTo(4, -r + 24);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
-            ctx.font = 'bold 7px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('N. MAGNETICO', 0, -r + 8);
-            ctx.restore();
-        }
+        // (Il nord magnetico è stato spostato sotto per non essere coperto dal quadrante)
 
         // --- 1. DISEGNO DEL QUADRANTE ROTANTE DELLA BUSSOLA ---
         ctx.save();
@@ -349,10 +318,41 @@ function draw() {
         ctx.lineTo(6, -r + 44);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
+
+        // --- DISEGNO DEL NORD MAGNETICO PASSIVO (LINEA TRATTEGGIATA BLU) ---
+        if (state.magneticHeading !== null && !isNaN(state.magneticHeading)) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            const magAngleRad = -state.magneticHeading * Math.PI / 180;
+            ctx.rotate(magAngleRad);
+
+            ctx.strokeStyle = '#0ea5e9'; // Blu
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -r * 0.95);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Testo ruotato per essere leggibile
+            ctx.translate(0, -r * 0.8);
+            ctx.rotate(-Math.PI / 2); // Ruota il testo di 90 gradi per scriverlo lungo la linea
+            ctx.fillStyle = '#0ea5e9';
+            ctx.font = '900 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('NORD MAGNETICO', 0, -6);
+
+            ctx.restore();
+        }
 
         // Disegno direzione Sole e Ombra
         if (state.sun.calculated) {
             const sunRad = state.sun.azimuth * Math.PI / 180;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-curHeading * Math.PI / 180);
             ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
             ctx.lineWidth = 1.5;
             ctx.setLineDash([5, 5]);
