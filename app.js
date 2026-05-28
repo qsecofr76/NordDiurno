@@ -11,11 +11,9 @@ const CITIES = {
 
 // Stato dell'applicazione
 const state = {
-    mode: 'auto',       // 'auto' (bussola) o 'manual' (drag)
     lat: 41.9028,       // Latitudine corrente
     lon: 12.4964,       // Longitudine corrente
-    heading: 0,         // Orientamento della bussola fisica (0 = Nord)
-    manualHeading: 0,   // Orientamento impostato col dito in modalità manuale
+    manualHeading: 0,   // Orientamento della bussola solare impostato dall'utente
     tiltX: 0,           // Inclinazione sinistra/destra (Gamma)
     tiltY: 0,           // Inclinazione avanti/indietro (Beta)
     smoothTiltX: 0,     // Valori smorzati per la fisica della bolla
@@ -44,8 +42,6 @@ const txtTiltY = document.getElementById('txt-tilt-y');
 const coordInfo = document.getElementById('coord-info');
 
 // Bottoni e controlli
-const btnAuto = document.getElementById('btn-auto');
-const btnManual = document.getElementById('btn-manual');
 const btnSensors = document.getElementById('btn-sensors');
 const citySelect = document.getElementById('city-select');
 const helpAlert = document.getElementById('help-alert');
@@ -153,15 +149,14 @@ function calcolaPosizioneSole() {
     lblAltezza.textContent = `${state.sun.altitude.toFixed(1)}°`;
 }
 
-// --- FUNZIONE DI AGGIORNAMENTO BOLLA LIVELLA (Corregge il bug originale) ---
+// --- FUNZIONE DI AGGIORNAMENTO BOLLA LIVELLA ---
 function updateLevelBubble() {
-    // Il calcolo e lo smorzamento vengono eseguiti qui per pulizia, prima del draw()
     const damping = 0.2;
     state.smoothTiltX += (state.tiltX - state.smoothTiltX) * damping;
     state.smoothTiltY += (state.tiltY - state.smoothTiltY) * damping;
 }
 
-// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA) ---
+// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA + LINEA NORD LUNGA) ---
 function draw() {
     const w = canvas.width / (window.devicePixelRatio || 1);
     const h = canvas.height / (window.devicePixelRatio || 1);
@@ -172,13 +167,26 @@ function draw() {
     // Pulisci l'area di disegno
     ctx.clearRect(0, 0, w, h);
 
-    // Seleziona l'orientamento attuale in base alla modalità
-    const curHeading = (state.mode === 'auto') ? state.heading : state.manualHeading;
+    const curHeading = state.manualHeading;
+
+    // --- DISEGNO DELLA LINEA ROSSA DEL NORD ESTESA ALL'INTERO SCHERMO ---
+    // Questa linea non ruota con la bussola, punta sempre verso l'alto dello schermo
+    // permettendo di allineare l'intero telefono con il Nord una volta che la bussola
+    // ruota. Viene disegnata con un bel tratteggio e un effetto glow rosso.
+    ctx.save();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // Rosso neon soft per il tratteggio esterno
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); // Da sopra lo schermo
+    ctx.lineTo(cx, h); // Fino a sotto lo schermo
+    ctx.stroke();
+    ctx.restore();
 
     // --- 1. DISEGNO DEL QUADRANTE ROTANTE DELLA BUSSOLA ---
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(-curHeading * Math.PI / 180); // Ruota la bussola coerentemente col mondo reale
+    ctx.rotate(-curHeading * Math.PI / 180); // Ruota la bussola coerentemente col trascinamento dell'utente
 
     // Sfondo della bussola
     ctx.strokeStyle = '#475569'; // ardesia
@@ -226,7 +234,7 @@ function draw() {
         ctx.fillText(p.label, (r - 20) * Math.sin(angleRad), -(r - 20) * Math.cos(angleRad));
     });
 
-    // Linea rossa indicante il Nord Celeste
+    // Linea indicante il Nord Celeste sul quadrante rotante
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -234,7 +242,7 @@ function draw() {
     ctx.lineTo(0, -r + 32);
     ctx.stroke();
 
-    // Freccia sulla punta del Nord
+    // Freccia sulla punta del Nord rotante
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.moveTo(0, -r + 16);
@@ -341,7 +349,6 @@ function draw() {
     ctx.stroke();
 
     // FISICA DELLA BOLLA D'ARIA
-    // Calcolo posizione grafica entro il limite massimo di inclinazione della livella (10 gradi)
     const maxTiltValue = 10;
     let clampedX = Math.max(-maxTiltValue, Math.min(maxTiltValue, state.smoothTiltX));
     let clampedY = Math.max(-maxTiltValue, Math.min(maxTiltValue, state.smoothTiltY));
@@ -399,20 +406,7 @@ function draw() {
 function handleOrientation(event) {
     state.hasHardwareSensors = true;
 
-    // Lettura bussola magnetica (Heading)
-    if (event.webkitCompassHeading !== undefined) {
-        state.heading = event.webkitCompassHeading;
-        diagSensorsIcon.textContent = "🟢";
-        diagSensorsVal.textContent = "ATTIVO (iOS)";
-        diagSensorsVal.className = "text-right font-bold text-emerald-400";
-    } else if (event.alpha !== null) {
-        state.heading = (360 - event.alpha) % 360;
-        diagSensorsIcon.textContent = "🟢";
-        diagSensorsVal.textContent = "ATTIVO (Android)";
-        diagSensorsVal.className = "text-right font-bold text-emerald-400";
-    }
-
-    // Lettura inclinometro per la livella (Beta e Gamma)
+    // Lettura inclinometro per la livella (Beta e Gamma) - Ignoriamo completamente l'orientamento magnetico alpha!
     state.tiltX = event.gamma || 0; // Inclinazione sinistra/destra
     state.tiltY = event.beta || 0;  // Inclinazione avanti/dietro
 
@@ -420,15 +414,17 @@ function handleOrientation(event) {
     txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
     txtTiltY.textContent = `${state.tiltY.toFixed(1)}°`;
 
-    // Nasconde l'avviso e aggiorna lo stato generale
+    // Aggiornamento diagnostica sensori per la sola livella a bolla
+    diagSensorsIcon.textContent = "🟢";
+    diagSensorsVal.textContent = "LIVELLA ATTIVA";
+    diagSensorsVal.className = "text-right font-bold text-emerald-400";
+
     helpAlert.classList.add('hidden');
-    statusBadge.textContent = "Bussola Online";
+    statusBadge.textContent = "Livella Online";
     statusBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
 
     updateLevelBubble();
-    if (state.mode === 'auto') {
-        draw();
-    }
+    draw();
 }
 
 // Richiesta permessi ed attivazione GPS/Sensori
@@ -454,7 +450,7 @@ async function sbloccaSensori() {
         );
     }
 
-    // 2. Richiesta Bussola ed accelerometro (Necessaria su iOS)
+    // 2. Richiesta accelerometro/giroscopio per livella
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceOrientationEvent.requestPermission();
@@ -479,7 +475,6 @@ async function sbloccaSensori() {
 }
 
 function connettiSensori() {
-    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     window.addEventListener('deviceorientation', handleOrientation, true);
 }
 
@@ -492,14 +487,14 @@ function getAngleFromCenter(clientX, clientY) {
 }
 
 function dragStart(clientX, clientY) {
-    if (state.mode !== 'manual') return;
     state.isDragging = true;
     state.dragStartAngle = getAngleFromCenter(clientX, clientY);
     state.dragStartHeading = state.manualHeading;
 }
 
+// Rotazione fluida tramite gesture
 function dragMove(clientX, clientY) {
-    if (!state.isDragging || state.mode !== 'manual') return;
+    if (!state.isDragging) return;
     const curAngle = getAngleFromCenter(clientX, clientY);
     const delta = curAngle - state.dragStartAngle;
     state.manualHeading = (state.dragStartHeading + delta + 360) % 360;
@@ -524,22 +519,7 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: true });
 canvas.addEventListener('touchend', dragEnd);
 
-// --- LOGICA PULSANTI E SELEZIONI ---
-btnAuto.addEventListener('click', () => {
-    state.mode = 'auto';
-    btnAuto.className = "flex-1 py-2 text-xs font-semibold rounded-md transition-all bg-amber-500 text-slate-950 font-bold neon-glow-amber";
-    btnManual.className = "flex-1 py-2 text-xs font-semibold rounded-md transition-all text-slate-400 hover:text-slate-200";
-    draw();
-});
-
-btnManual.addEventListener('click', () => {
-    state.mode = 'manual';
-    state.manualHeading = state.heading; // Pre-carica l'angolo reale per transizione fluida
-    btnManual.className = "flex-1 py-2 text-xs font-semibold rounded-md transition-all bg-amber-500 text-slate-950 font-bold neon-glow-amber";
-    btnAuto.className = "flex-1 py-2 text-xs font-semibold rounded-md transition-all text-slate-400 hover:text-slate-200";
-    draw();
-});
-
+// --- LOGICA SELEZIONI CITTA' ---
 citySelect.addEventListener('change', (e) => {
     const val = e.target.value;
     if (val === 'gps') {
@@ -588,7 +568,7 @@ tick();
 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
     connettiSensori();
     setTimeout(() => {
-        if (state.heading !== 0 || state.tiltX !== 0) {
+        if (state.tiltX !== 0) {
             btnSensors.style.display = 'none';
         }
     }, 600);
