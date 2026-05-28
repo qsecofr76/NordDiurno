@@ -1,6 +1,15 @@
-# ☀️ Meridiana Digitale & Bussola Solare (Digital Sundial & Solar Compass)
+# ☀️ NordDiurno
 
 [Italiano](#italiano) | [English](#english)
+
+---
+
+## 🚀 Provalo Subito!
+L'applicazione è **già eseguibile ed utilizzabile online**.
+Visita direttamente questa pagina dal tuo smartphone:
+👉 **[https://qsecofr76.github.io/NordDiurno/](https://qsecofr76.github.io/NordDiurno/)**
+
+Funziona perfettamente sui browser mobili (testato su Android).
 
 ---
 
@@ -22,7 +31,7 @@ Per usare lo smartphone come una vera meridiana fisica ed orientarti con precisi
 2.  **Posiziona lo Gnomone**: Appoggia la base dello gnomone **esattamente al centro del cerchio della livella a bolla** sullo schermo.
 3.  **Metti in piano**: Tieni lo smartphone orizzontalmente fino a quando la **bolla d'aria della livella diventa verde** al centro del mirino.
 4.  **Allinea**:
-    *   *In modalità manuale*: Ruota il telefono (o trascina la bussola con il dito sullo schermo) finché l'**ombra reale** proiettata dallo stuzzicadenti sullo schermo non si allinea perfettamente con la linea gialla dell'**"OMBRA PREVISTA"** visualizzata sul display.
+    *   *In modalità manuale*: Ruota il telefono (o trascina la bussola con il dito sullo schermo) finché l'**ombra reale** proiettata dallo stuzzicadenti sullo schermo non si allinea perfettamente con la linea gialla dell'**"OMBRA"** visualizzata sul display.
     *   Quando sono allineate, la punta indicata con il punto **N rosso** sul display punterà **esattamente verso il vero Nord geografico**!
 
 ---
@@ -45,15 +54,5 @@ To turn your phone into a physical sundial:
 2.  **Place the Gnomon**: Rest the base of your gnomon **exactly in the center of the level bubble circle** on the screen.
 3.  **Level the device**: Hold the phone flat until the **bubble turns green** in the center.
 4.  **Align**:
-    *   *In manual mode*: Rotate the phone (or drag the dial on the screen) until the **real physical shadow** cast by the toothpick aligns perfectly with the glowing yellow **"OMBRA PREVISTA"** line on the display.
+    *   *In manual mode*: Rotate the phone (or drag the dial on the screen) until the **real physical shadow** cast by the toothpick aligns perfectly with the glowing yellow **"OMBRA"** line on the display.
     *   Once aligned, the **red N** indicator on the dial points **exactly to true geographic North**!
-
----
-
-## 🚀 Come Pubblicarlo su GitHub Pages
-Per ospitare questo progetto gratuitamente sul tuo profilo GitHub:
-1. Crea un repository su GitHub (es. `nord-diurno`).
-2. Fai il push di tutti i file in questo repository.
-3. Vai su **Settings** -> **Pages**.
-4. Sotto **Build and deployment**, seleziona come Source `Deploy from a branch` e imposta il branch `main` (o `master`) e la cartella `/ (root)`.
-5. Clicca su **Save**. Dopo un minuto, il tuo sito sarà online su `https://<tuo-utente>.github.io/nord-diurno/` (in connessione sicura HTTPS, che sbloccherà automaticamente tutti i sensori di movimento dello smartphone)!
