@@ -235,8 +235,8 @@ function draw() {
             ctx.save();
             ctx.translate(cx, cy);
             
-            // Angolo relativo basato sui gradi reali
-            const magAngleRad = (state.magneticHeading - curHeading) * Math.PI / 180;
+            // Angolo relativo basato sui gradi reali (rispetto al telefono fisso)
+            const magAngleRad = -state.magneticHeading * Math.PI / 180;
             ctx.rotate(magAngleRad);
 
             ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
@@ -324,19 +324,19 @@ function draw() {
             ctx.fillText(p.label, (r - 20) * Math.sin(angleRad), -(r - 20) * Math.cos(angleRad));
         });
 
-        // Nord Celeste
+        // Nord Celeste (Frecce ed asse rosso ridimensionati per non sovrapporsi a 'N')
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, -r + 32);
+        ctx.lineTo(0, -r + 44);
         ctx.stroke();
 
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.moveTo(0, -r + 16);
-        ctx.lineTo(-6, -r + 30);
-        ctx.lineTo(6, -r + 30);
+        ctx.moveTo(0, -r + 34);
+        ctx.lineTo(-6, -r + 44);
+        ctx.lineTo(6, -r + 44);
         ctx.closePath();
         ctx.fill();
 
@@ -365,9 +365,9 @@ function draw() {
                 const endY = -len * Math.cos(shadowRad);
 
                 const shadowGrad = ctx.createRadialGradient(0, 0, 1, endX, endY, len * 0.4);
-                shadowGrad.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
-                shadowGrad.addColorStop(0.7, 'rgba(251, 191, 36, 0.4)');
-                shadowGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+                shadowGrad.addColorStop(0, 'rgba(57, 255, 20, 0.9)');
+                shadowGrad.addColorStop(0.7, 'rgba(57, 255, 20, 0.4)');
+                shadowGrad.addColorStop(1, 'rgba(57, 255, 20, 0)');
 
                 ctx.strokeStyle = shadowGrad;
                 ctx.lineWidth = 14;
@@ -377,7 +377,7 @@ function draw() {
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
 
-                ctx.strokeStyle = '#fbbf24';
+                ctx.strokeStyle = '#39ff14';
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -389,7 +389,7 @@ function draw() {
                 let textAngle = shadowRad - Math.PI / 2;
                 if (shadowAzimuth > 90 && shadowAzimuth < 270) textAngle += Math.PI;
                 ctx.rotate(textAngle);
-                ctx.fillStyle = '#fbbf24';
+                ctx.fillStyle = '#39ff14';
                 ctx.font = '900 9px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('OMBRA PREVISTA', 0, -8);
@@ -431,7 +431,7 @@ function draw() {
         let clampedY = Math.max(-maxTiltValue, Math.min(maxTiltValue, state.smoothTiltY));
 
         const maxShiftPixels = 24;
-        const bubbleX = cx + (clampedX / maxTiltValue) * maxShiftPixels;
+        const bubbleX = cx - (clampedX / maxTiltValue) * maxShiftPixels;
         const bubbleY = cy - (clampedY / maxTiltValue) * maxShiftPixels;
 
         const totalTiltAngle = Math.sqrt(state.tiltX * state.tiltX + state.tiltY * state.tiltY);
@@ -475,6 +475,29 @@ function draw() {
 }
 
 // --- GESTIONE DEI SENSORI FISICI ---
+function handleAbsoluteOrientation(event) {
+    try {
+        state.hasHardwareSensors = true;
+        if (event.alpha !== null && event.alpha !== undefined) {
+            state.magneticHeading = (360 - event.alpha) % 360;
+            state.hasAbsoluteHeading = true;
+            aggiornaStatoSensoriAttivi();
+        }
+    } catch (e) {
+        console.error("Errore orientamento assoluto:", e);
+    }
+}
+
+function aggiornaStatoSensoriAttivi() {
+    diagSensorsIcon.textContent = "🟢";
+    diagSensorsVal.textContent = "LIVELLA & BUSSOLA ATTIVE";
+    diagSensorsVal.className = "text-right font-bold text-emerald-400";
+
+    helpAlert.classList.add('hidden');
+    statusBadge.textContent = "Sensori Online";
+    statusBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+}
+
 function handleOrientation(event) {
     try {
         state.hasHardwareSensors = true;
@@ -482,23 +505,18 @@ function handleOrientation(event) {
         state.tiltX = event.gamma !== null ? event.gamma : 0;
         state.tiltY = event.beta !== null ? event.beta : 0;
 
-        // Rilevamento magnetico per la freccia blu (compatibile assoluto per Android e iOS)
+        // Rilevamento magnetico per la freccia blu (compatibile assoluto per iOS)
         if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
             state.magneticHeading = event.webkitCompassHeading;
-        } else if (event.alpha !== null && event.alpha !== undefined) {
+            state.hasAbsoluteHeading = true;
+        } else if (!state.hasAbsoluteHeading && event.alpha !== null && event.alpha !== undefined) {
             state.magneticHeading = (360 - event.alpha) % 360;
         }
 
         txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
         txtTiltY.textContent = `${state.tiltY.toFixed(1)}°`;
 
-        diagSensorsIcon.textContent = "🟢";
-        diagSensorsVal.textContent = "LIVELLA & BUSSOLA ATTIVE";
-        diagSensorsVal.className = "text-right font-bold text-emerald-400";
-
-        helpAlert.classList.add('hidden');
-        statusBadge.textContent = "Sensori Online";
-        statusBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        aggiornaStatoSensoriAttivi();
     } catch (e) {
         console.error("Errore orientamento:", e);
     }
@@ -566,7 +584,7 @@ function rilevaGPS() {
 // Ascolto simultaneo dell'evento standard e assoluto per catturare la bussola su Android
 function connettiSensori() {
     try {
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.addEventListener('deviceorientationabsolute', handleAbsoluteOrientation, true);
         window.addEventListener('deviceorientation', handleOrientation, true);
     } catch (e) {
         console.error("Errore registrazione sensori:", e);
