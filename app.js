@@ -22,6 +22,8 @@ const state = {
 const canvas = document.getElementById('dialCanvas');
 const ctx = canvas.getContext('2d');
 const timeDisplay = document.getElementById('time-display');
+const utcDisplay = document.getElementById('utc-display');
+const tzDisplay = document.getElementById('tz-display');
 
 // Elementi DOM di stato
 const lblAzimut = document.getElementById('lbl-azimut');
@@ -30,7 +32,7 @@ const lblPos = document.getElementById('lbl-pos');
 const txtTiltX = document.getElementById('txt-tilt-x');
 const txtTiltY = document.getElementById('txt-tilt-y');
 
-// Bottoni e controlli per coordinate
+// Bottoni e controlli per coordinate ed overlay
 const btnSensors = document.getElementById('btn-sensors');
 const btnGpsTrigger = document.getElementById('btn-gps-trigger');
 const inputLat = document.getElementById('input-lat');
@@ -38,7 +40,13 @@ const inputLon = document.getElementById('input-lon');
 const helpAlert = document.getElementById('help-alert');
 const statusBadge = document.getElementById('status-badge');
 
-// Elementi diagnostica
+// Pulsanti e contenitore modale diagnostica
+const btnToggleDiag = document.getElementById('btn-toggle-diag');
+const btnCloseDiag = document.getElementById('btn-close-diag');
+const btnCloseDiagBottom = document.getElementById('btn-close-diag-bottom');
+const diagModal = document.getElementById('diag-modal');
+
+// Elementi diagnostica (dentro la modale)
 const diagHttpsIcon = document.getElementById('diag-https-icon');
 const diagHttpsVal = document.getElementById('diag-https-val');
 const diagSensorsIcon = document.getElementById('diag-sensors-icon');
@@ -54,7 +62,7 @@ function resizeCanvas() {
     draw();
 }
 
-// --- SISTEMA DIAGNOSTICO INIZIALE ---
+// --- SISTEMA DIAGNOSTICO ---
 function eseguiDiagnostica() {
     const isSecure = window.location.protocol === 'https:' || 
                      window.location.hostname === 'localhost' || 
@@ -87,6 +95,38 @@ function eseguiDiagnostica() {
         statusBadge.textContent = "Demo / Simulatore";
         statusBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700";
     }
+}
+
+// --- CONTROLLO MODALE DIAGNOSTICA ---
+function apriModale() {
+    diagModal.classList.remove('hidden');
+}
+
+function chiudiModale() {
+    diagModal.classList.add('hidden');
+}
+
+btnToggleDiag.addEventListener('click', apriModale);
+btnCloseDiag.addEventListener('click', chiudiModale);
+btnCloseDiagBottom.addEventListener('click', chiudiModale);
+
+// --- DETERMINA FUSO ORARIO E ORA LEGALE ---
+function aggiornaInformazioniFuso(now) {
+    // Rileva la sigla del fuso orario o l'offset
+    const timeZoneString = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europa/Roma";
+    
+    // Controlla se siamo in ora legale (Daylight Saving Time) confrontando gli offset di gennaio e luglio
+    const tJan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+    const tJul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+    const isDST = now.getTimezoneOffset() < Math.max(tJan, tJul);
+    
+    const offsetMinuti = -now.getTimezoneOffset();
+    const offsetOre = offsetMinuti / 60;
+    const sign = offsetOre >= 0 ? "+" : "";
+    
+    let fusoNome = isDST ? "CEST (Ora Legale)" : "CET (Ora Solare)";
+    
+    tzDisplay.textContent = `${fusoNome} [UTC${sign}${offsetOre}]`;
 }
 
 // --- ALGORITMO CALCOLO SOLE IN TEMPO REALE ---
@@ -147,7 +187,7 @@ function updateLevelBubble() {
     state.smoothTiltY += (state.tiltY - state.smoothTiltY) * damping;
 }
 
-// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA + LINEA NORD LUNGA + NORD MAGNETICO SOFT) ---
+// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA + LINEA NORD LUNGA + NORD MAGNETICO SOFT + GRADI AZIMUT) ---
 function draw() {
     const w = canvas.width / (window.devicePixelRatio || 1);
     const h = canvas.height / (window.devicePixelRatio || 1);
@@ -172,29 +212,26 @@ function draw() {
     ctx.restore();
 
     // --- DISEGNO DEL NORD MAGNETICO PASSIVO (FRECCIA BLU POCO VISTOSA) ---
-    // Questa freccia ruota rispetto al Nord astronomico manuale impostato dall'utente.
-    // Indica la direzione del Nord Magnetico reale se il sensore è attivo.
     if (state.magneticHeading !== null) {
         ctx.save();
         ctx.translate(cx, cy);
         
-        // Calcolo dell'angolo magnetico relativo all'orientamento manuale corrente della meridiana
-        // La freccia magnetica deve indicare la differenza tra l'inclinazione del telefono e il nord reale.
+        // Angolo magnetico relativo all'orientamento manuale corrente della meridiana
         const magAngleRad = (state.magneticHeading - curHeading) * Math.PI / 180;
         
         ctx.rotate(magAngleRad);
 
         // Disegno di una freccia blu neon sottile e poco vistosa
-        ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)'; // Cyan/Blu trasparente e morbido
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)'; // Cyan/Blu trasparente
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); // Linea tratteggiata per non confondersi con la linea di mira
+        ctx.setLineDash([4, 4]); // Tratteggiata
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -r + 28);
         ctx.stroke();
-        ctx.setLineDash([]); // Ripristina linea continua
+        ctx.setLineDash([]); // Ripristina
 
-        // Punta della freccia blu magnetica
+        // Punta della freccia
         ctx.fillStyle = 'rgba(6, 182, 212, 0.7)';
         ctx.beginPath();
         ctx.moveTo(0, -r + 14);
@@ -235,7 +272,8 @@ function draw() {
         ctx.stroke();
     });
 
-    // Tacche di graduazione dei gradi
+    // Tacche di graduazione dei gradi e NUMERAZIONE AZIMUT (Ogni 30 gradi)
+    // 0 = Nord, 90 = Est, 180 = Sud, 270 = Ovest. I numeri dei gradi aiutano il puntamento dei corpi celesti.
     for (let deg = 0; deg < 360; deg += 10) {
         const angle = deg * Math.PI / 180;
         const isMajor = deg % 30 === 0;
@@ -245,6 +283,19 @@ function draw() {
         ctx.moveTo((r - (isMajor ? 12 : 6)) * Math.sin(angle), -(r - (isMajor ? 12 : 6)) * Math.cos(angle));
         ctx.lineTo(r * Math.sin(angle), -r * Math.cos(angle));
         ctx.stroke();
+
+        // Stampa i gradi numerici di azimut per puntare i corpi celesti (saltando i punti cardinali principali per pulizia grafica)
+        if (isMajor && deg !== 0 && deg !== 90 && deg !== 180 && deg !== 270) {
+            ctx.save();
+            ctx.translate((r - 20) * Math.sin(angle), -(r - 20) * Math.cos(angle));
+            ctx.rotate(angle); // Allinea il testo all'angolo di tacca
+            ctx.fillStyle = '#94a3b8'; // Grigio chiaro, discreto
+            ctx.font = 'bold 8px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${deg}°`, 0, 0);
+            ctx.restore();
+        }
     }
 
     // Punti Cardinali ad alto contrasto
@@ -334,7 +385,6 @@ function draw() {
             ctx.save();
             ctx.translate(endX / 2, endY / 2);
             let textAngle = shadowRad - Math.PI / 2;
-            // Impedisce la scrittura del testo capovolto
             if (shadowAzimuth > 90 && shadowAzimuth < 270) textAngle += Math.PI;
             ctx.rotate(textAngle);
             ctx.fillStyle = '#fbbf24';
@@ -449,9 +499,9 @@ function handleOrientation(event) {
     txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
     txtTiltY.textContent = `${state.tiltY.toFixed(1)}°`;
 
-    // Aggiornamento diagnostica sensori per la sola livella a bolla
+    // Aggiornamento diagnostica sensori per la sola livella a bolla (nella modale)
     diagSensorsIcon.textContent = "🟢";
-    diagSensorsVal.textContent = "LIVELLA ATTIVA";
+    diagSensorsVal.textContent = "LIVELLA & BUSSOLA ATTIVE";
     diagSensorsVal.className = "text-right font-bold text-emerald-400";
 
     helpAlert.classList.add('hidden');
@@ -542,7 +592,6 @@ function dragMove(clientX, clientY) {
     if (!state.isDragging) return;
     const curAngle = getAngleFromCenter(clientX, clientY);
     const delta = curAngle - state.dragStartAngle;
-    // Invertito da '+ delta' a '- delta' per rendere la rotazione naturale
     state.manualHeading = (state.dragStartHeading - delta + 360) % 360;
     draw();
 }
@@ -597,7 +646,19 @@ window.addEventListener('resize', resizeCanvas);
 
 function tick() {
     const now = new Date();
+    
+    // Aggiornamento display ora locale
     timeDisplay.textContent = now.toLocaleTimeString('it-IT');
+    
+    // Aggiornamento display ora UTC dinamico
+    const utcHours = String(now.getUTCHours()).padStart(2, '0');
+    const utcMinutes = String(now.getUTCMinutes()).padStart(2, '0');
+    const utcSeconds = String(now.getUTCSeconds()).padStart(2, '0');
+    utcDisplay.textContent = `${utcHours}:${utcMinutes}:${utcSeconds}`;
+    
+    // Aggiorna offset e sigla fuso
+    aggiornaInformazioniFuso(now);
+    
     calcolaPosizioneSole();
     
     // Se i sensori fisici non sono disponibili, simuliamo una piccolissima oscillazione della bolla per dimostrazione
