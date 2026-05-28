@@ -351,16 +351,24 @@ function draw() {
             ctx.lineTo(r * Math.sin(sunRad), -r * Math.cos(sunRad));
             ctx.stroke();
             ctx.setLineDash([]);
+            
+            // Etichetta "DIREZIONE SOLE"
+            ctx.save();
+            ctx.translate((r * 0.75) * Math.sin(sunRad), -(r * 0.75) * Math.cos(sunRad));
+            let sunTextAngle = sunRad - Math.PI / 2;
+            if (state.sun.azimuth > 90 && state.sun.azimuth < 270) sunTextAngle += Math.PI;
+            ctx.rotate(sunTextAngle);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.7)';
+            ctx.font = '800 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('DIREZIONE SOLE', 0, -6);
+            ctx.restore();
 
             if (state.sun.altitude > 0) {
                 const shadowAzimuth = (state.sun.azimuth + 180) % 360;
                 const shadowRad = shadowAzimuth * Math.PI / 180;
 
-                const virtualGnomon = 32;
-                let len = virtualGnomon / Math.tan(state.sun.altitude * Math.PI / 180);
-                if (len > r * 0.9) len = r * 0.9;
-                if (len < 5) len = 5;
-
+                let len = r * 0.85; // Fixed long length for easy alignment
                 const endX = len * Math.sin(shadowRad);
                 const endY = -len * Math.cos(shadowRad);
 
@@ -385,14 +393,14 @@ function draw() {
                 ctx.stroke();
 
                 ctx.save();
-                ctx.translate(endX / 2, endY / 2);
+                ctx.translate(endX * 0.75, endY * 0.75);
                 let textAngle = shadowRad - Math.PI / 2;
                 if (shadowAzimuth > 90 && shadowAzimuth < 270) textAngle += Math.PI;
                 ctx.rotate(textAngle);
                 ctx.fillStyle = '#39ff14';
-                ctx.font = '900 9px sans-serif';
+                ctx.font = '900 11px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('OMBRA PREVISTA', 0, -8);
+                ctx.fillText('ALLINEA OMBRA QUI', 0, -8);
                 ctx.restore();
             } else {
                 ctx.fillStyle = '#64748b';
@@ -482,6 +490,13 @@ function handleAbsoluteOrientation(event) {
             state.magneticHeading = (360 - event.alpha) % 360;
             state.hasAbsoluteHeading = true;
             aggiornaStatoSensoriAttivi();
+        }
+        // Legge l'inclinazione anche dall'evento assoluto per quei dispositivi (come alcuni Android) che non lanciano deviceorientation
+        if (event.gamma !== null && event.beta !== null && event.gamma !== undefined && event.beta !== undefined) {
+            state.tiltX = event.gamma;
+            state.tiltY = event.beta;
+            txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
+            txtTiltY.textContent = `${state.tiltY.toFixed(1)}°`;
         }
     } catch (e) {
         console.error("Errore orientamento assoluto:", e);
