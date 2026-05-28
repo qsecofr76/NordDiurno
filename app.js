@@ -51,6 +51,8 @@ const diagHttpsIcon = document.getElementById('diag-https-icon');
 const diagHttpsVal = document.getElementById('diag-https-val');
 const diagSensorsIcon = document.getElementById('diag-sensors-icon');
 const diagSensorsVal = document.getElementById('diag-sensors-val');
+const diagMagIcon = document.getElementById('diag-mag-icon');
+const diagMagVal = document.getElementById('diag-mag-val');
 
 // --- RIDIMENSIONAMENTO E DENSITY PIXELS DEL CANVAS ---
 function resizeCanvas() {
@@ -332,6 +334,14 @@ function draw() {
         ctx.lineTo(0, -r + 44);
         ctx.stroke();
 
+        // Sud Celeste (Prolungamento asse rosso tratteggiato)
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, r - 44);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.moveTo(0, -r + 34);
@@ -361,7 +371,7 @@ function draw() {
             ctx.fillStyle = 'rgba(245, 158, 11, 0.7)';
             ctx.font = '800 10px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('DIREZIONE SOLE', 0, -6);
+            ctx.fillText('SOLE', 0, -6);
             ctx.restore();
 
             if (state.sun.altitude > 0) {
@@ -400,7 +410,7 @@ function draw() {
                 ctx.fillStyle = '#39ff14';
                 ctx.font = '900 11px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('ALLINEA OMBRA QUI', 0, -8);
+                ctx.fillText('OMBRA', 0, -8);
                 ctx.restore();
             } else {
                 ctx.fillStyle = '#64748b';
@@ -490,6 +500,10 @@ function handleAbsoluteOrientation(event) {
             state.magneticHeading = (360 - event.alpha) % 360;
             state.hasAbsoluteHeading = true;
             aggiornaStatoSensoriAttivi();
+            if (diagMagVal) diagMagVal.textContent = state.magneticHeading.toFixed(1) + '°';
+            if (diagMagIcon) diagMagIcon.textContent = '🟢';
+        } else if (!state.hasAbsoluteHeading && diagMagVal && diagMagVal.textContent === 'N/A') {
+            diagMagVal.textContent = 'Dati bussola assenti (alpha=null)';
         }
         // Legge l'inclinazione anche dall'evento assoluto per quei dispositivi (come alcuni Android) che non lanciano deviceorientation
         if (event.gamma !== null && event.beta !== null && event.gamma !== undefined && event.beta !== undefined) {
@@ -526,6 +540,13 @@ function handleOrientation(event) {
             state.hasAbsoluteHeading = true;
         } else if (!state.hasAbsoluteHeading && event.alpha !== null && event.alpha !== undefined) {
             state.magneticHeading = (360 - event.alpha) % 360;
+        }
+
+        if (state.magneticHeading !== null) {
+            if (diagMagVal) diagMagVal.textContent = state.magneticHeading.toFixed(1) + '°';
+            if (diagMagIcon) diagMagIcon.textContent = '🟢';
+        } else if (!state.hasAbsoluteHeading && diagMagVal && diagMagVal.textContent === 'N/A') {
+            diagMagVal.textContent = 'Dati bussola assenti';
         }
 
         txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
