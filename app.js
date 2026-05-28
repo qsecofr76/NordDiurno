@@ -1,18 +1,7 @@
-const CITIES = {
-    roma: { lat: 41.9028, lon: 12.4964, name: "Roma" },
-    milano: { lat: 45.4642, lon: 9.1900, name: "Milano" },
-    napoli: { lat: 40.8518, lon: 14.2681, name: "Napoli" },
-    torino: { lat: 45.0703, lon: 7.6869, name: "Torino" },
-    palermo: { lat: 38.1157, lon: 13.3615, name: "Palermo" },
-    bologna: { lat: 44.4949, lon: 11.3426, name: "Bologna" },
-    firenze: { lat: 43.7696, lon: 11.2558, name: "Firenze" },
-    bari: { lat: 41.1171, lon: 16.8719, name: "Bari" }
-};
-
-// Stato dell'applicazione
+// Stato dell'applicazione con valori di default su Ponte di Piave (Treviso)
 const state = {
-    lat: 41.9028,       // Latitudine corrente
-    lon: 12.4964,       // Longitudine corrente
+    lat: 45.7272,       // Latitudine Ponte di Piave
+    lon: 12.4632,       // Longitudine Ponte di Piave
     manualHeading: 0,   // Orientamento della bussola solare impostato dall'utente
     tiltX: 0,           // Inclinazione sinistra/destra (Gamma)
     tiltY: 0,           // Inclinazione avanti/indietro (Beta)
@@ -39,11 +28,12 @@ const lblAltezza = document.getElementById('lbl-altezza');
 const lblPos = document.getElementById('lbl-pos');
 const txtTiltX = document.getElementById('txt-tilt-x');
 const txtTiltY = document.getElementById('txt-tilt-y');
-const coordInfo = document.getElementById('coord-info');
 
-// Bottoni e controlli
+// Bottoni e controlli per coordinate
 const btnSensors = document.getElementById('btn-sensors');
-const citySelect = document.getElementById('city-select');
+const btnGpsTrigger = document.getElementById('btn-gps-trigger');
+const inputLat = document.getElementById('input-lat');
+const inputLon = document.getElementById('input-lon');
 const helpAlert = document.getElementById('help-alert');
 const statusBadge = document.getElementById('status-badge');
 
@@ -170,9 +160,6 @@ function draw() {
     const curHeading = state.manualHeading;
 
     // --- DISEGNO DELLA LINEA ROSSA DEL NORD ESTESA ALL'INTERO SCHERMO ---
-    // Questa linea non ruota con la bussola, punta sempre verso l'alto dello schermo
-    // permettendo di allineare l'intero telefono con il Nord una volta che la bussola
-    // ruota. Viene disegnata con un bel tratteggio e un effetto glow rosso.
     ctx.save();
     ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // Rosso neon soft per il tratteggio esterno
     ctx.lineWidth = 2.5;
@@ -356,10 +343,9 @@ function draw() {
     // Rapporto spostamento in pixel (massimo 24px di corsa)
     const maxShiftPixels = 24;
     const bubbleX = cx + (clampedX / maxTiltValue) * maxShiftPixels;
-    // Invertiamo l'asse Y per assecondare il moto di una vera bolla d'aria immersa nel liquido
     const bubbleY = cy - (clampedY / maxTiltValue) * maxShiftPixels;
 
-    // Colore dinamico della bolla: verde se in piano, rosso se inclinato
+    // Colore dinamico della bolla
     const totalTiltAngle = Math.sqrt(state.tiltX * state.tiltX + state.tiltY * state.tiltY);
     let bubbleGradient = ctx.createRadialGradient(bubbleX - 3, bubbleY - 3, 1, bubbleX, bubbleY, 8);
 
@@ -372,7 +358,7 @@ function draw() {
         bubbleGradient.addColorStop(0, '#fbfb24'); // Giallo
         bubbleGradient.addColorStop(1, '#d97706');
     } else {
-        // Molto inclinato (Errore d'ombra!)
+        // Molto inclinato
         bubbleGradient.addColorStop(0, '#f87171'); // Rosso rubino
         bubbleGradient.addColorStop(1, '#dc2626');
     }
@@ -383,7 +369,7 @@ function draw() {
     ctx.arc(bubbleX, bubbleY, 8, 0, 2 * Math.PI);
     ctx.fill();
 
-    // Riflesso 3D bianco sulla sfera
+    // Riflesso 3D bianco
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.beginPath();
     ctx.arc(bubbleX - 3, bubbleY - 3, 2.5, 0, 2 * Math.PI);
@@ -406,7 +392,7 @@ function draw() {
 function handleOrientation(event) {
     state.hasHardwareSensors = true;
 
-    // Lettura inclinometro per la livella (Beta e Gamma) - Ignoriamo completamente l'orientamento magnetico alpha!
+    // Lettura inclinometro per la livella (Beta e Gamma)
     state.tiltX = event.gamma || 0; // Inclinazione sinistra/destra
     state.tiltY = event.beta || 0;  // Inclinazione avanti/dietro
 
@@ -430,27 +416,9 @@ function handleOrientation(event) {
 // Richiesta permessi ed attivazione GPS/Sensori
 async function sbloccaSensori() {
     btnSensors.textContent = "ATTIVAZIONE IN CORSO...";
+    rilevaGPS();
 
-    // 1. Richiesta GPS
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                state.lat = pos.coords.latitude;
-                state.lon = pos.coords.longitude;
-                citySelect.value = "gps";
-                coordInfo.innerHTML = `GPS Attivo<br>Lat: ${state.lat.toFixed(4)} | Lon: ${state.lon.toFixed(4)}`;
-                lblPos.textContent = "GPS Attivo";
-                calcolaPosizioneSole();
-                draw();
-            },
-            (err) => {
-                console.warn("GPS rifiutato, utilizzo posizione predefinita.");
-            },
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
-    }
-
-    // 2. Richiesta accelerometro/giroscopio per livella
+    // Richiesta accelerometro/giroscopio per livella
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceOrientationEvent.requestPermission();
@@ -474,6 +442,33 @@ async function sbloccaSensori() {
     }
 }
 
+// Rilevamento GPS autonomo
+function rilevaGPS() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                state.lat = pos.coords.latitude;
+                state.lon = pos.coords.longitude;
+                
+                // Aggiorna visivamente i due campi di input sul display
+                inputLat.value = state.lat.toFixed(5);
+                inputLon.value = state.lon.toFixed(5);
+                lblPos.textContent = "GPS Attivo";
+                
+                calcolaPosizioneSole();
+                draw();
+            },
+            (err) => {
+                console.warn("GPS negato o non raggiungibile. Rimangono le coordinate manuali.");
+                alert("Impossibile accedere al GPS. Controlla i permessi o inserisci le coordinate manualmente.");
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    } else {
+        alert("Geolocalizzazione non supportata dal tuo browser.");
+    }
+}
+
 function connettiSensori() {
     window.addEventListener('deviceorientation', handleOrientation, true);
 }
@@ -492,7 +487,6 @@ function dragStart(clientX, clientY) {
     state.dragStartHeading = state.manualHeading;
 }
 
-// Rotazione fluida tramite gesture
 function dragMove(clientX, clientY) {
     if (!state.isDragging) return;
     const curAngle = getAngleFromCenter(clientX, clientY);
@@ -519,22 +513,33 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: true });
 canvas.addEventListener('touchend', dragEnd);
 
-// --- LOGICA SELEZIONI CITTA' ---
-citySelect.addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (val === 'gps') {
-        sbloccaSensori();
-    } else if (CITIES[val]) {
-        const city = CITIES[val];
-        state.lat = city.lat;
-        state.lon = city.lon;
-        coordInfo.innerHTML = `Mappa: ${city.name}<br>Lat: ${state.lat.toFixed(4)} | Lon: ${state.lon.toFixed(4)}`;
-        lblPos.textContent = city.name;
-        calcolaPosizioneSole();
-        draw();
-    }
-});
+// --- GESTIONE CAMPI DI INPUT MANUALE COORDINATE ---
+function gestisciInputCoordinate() {
+    const parsedLat = parseFloat(inputLat.value);
+    const parsedLon = parseFloat(inputLon.value);
 
+    // Valida i limiti geometrici
+    if (!isNaN(parsedLat) && parsedLat >= -90 && parsedLat <= 90) {
+        state.lat = parsedLat;
+    }
+    if (!isNaN(parsedLon) && parsedLon >= -180 && parsedLon <= 180) {
+        state.lon = parsedLon;
+    }
+
+    // Se si inseriscono le coordinate di Ponte di Piave a mano, mostriamo il nome predefinito
+    if (Math.abs(state.lat - 45.7272) < 0.01 && Math.abs(state.lon - 12.4632) < 0.01) {
+        lblPos.textContent = "Ponte di Piave (Manuale)";
+    } else {
+        lblPos.textContent = "Coordinata Manuale";
+    }
+
+    calcolaPosizioneSole();
+    draw();
+}
+
+inputLat.addEventListener('input', gestisciInputCoordinate);
+inputLon.addEventListener('input', gestisciInputCoordinate);
+btnGpsTrigger.addEventListener('click', rilevaGPS);
 btnSensors.addEventListener('click', sbloccaSensori);
 
 // --- LOOP PRINCIPALE ED EVENTI DI AVVIO ---
