@@ -35,64 +35,33 @@
         </div>
     </header>
 
-    <!-- DIAGNOSTICA DEI SENSORI (Compatta, incentrata su Livella e GPS) -->
-    <section class="w-full px-4 pt-3 z-10 max-w-md mx-auto">
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-2">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Stato Livella e GPS</span>
-                <span id="status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Pronto</span>
-            </div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono">
-                <div class="flex items-center gap-1.5 text-slate-300">
-                    <span id="diag-https-icon">⚪</span> Connessione Sicura:
-                </div>
-                <div id="diag-https-val" class="text-right font-bold text-emerald-400">Verifica...</div>
-
-                <div class="flex items-center gap-1.5 text-slate-300">
-                    <span id="diag-sensors-icon">⚪</span> Sensore Livella:
-                </div>
-                <div id="diag-sensors-val" class="text-right font-bold text-slate-455">Verifica...</div>
-            </div>
-            
-            <!-- Messaggio d'aiuto per sbloccare i sensori -->
-            <div id="help-alert" class="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-lg p-2 mt-1 hidden">
-                ⚠️ I sensori fisici sono bloccati. Premi il pulsante azzurro in basso per attivarli.
-            </div>
-        </div>
-    </section>
-
     <!-- AREA CENTRALE: Grafica della Meridiana e Livella Integrata -->
-    <main class="flex-grow flex flex-col items-center justify-center relative px-4 w-full max-w-md mx-auto">
+    <main class="flex-grow flex flex-col items-center justify-center relative px-4 w-full max-w-md mx-auto py-2">
         
         <!-- Istruzione visiva rapida -->
-        <div class="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2 animate-pulse-soft">
+        <div class="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 animate-pulse-soft">
             👆 Ruota con il dito per allineare l'ombra
         </div>
 
         <!-- Contenitore del Canvas -->
-        <div class="relative w-full aspect-square max-w-[320px] md:max-w-[360px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl">
+        <div class="relative w-full aspect-square max-w-[300px] md:max-w-[340px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl">
             <!-- Canvas ad alta risoluzione -->
             <canvas id="dialCanvas" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
         </div>
 
         <!-- Indicatori Angolari Digitali di Inclinazione del Telefono -->
-        <div class="flex justify-center gap-6 mt-4 text-xs font-mono bg-slate-900 border border-slate-800 px-4 py-1.5 rounded-full text-slate-300 shadow">
+        <div class="flex justify-center gap-6 mt-3.5 text-xs font-mono bg-slate-900 border border-slate-800 px-4 py-1.5 rounded-full text-slate-300 shadow">
             <div>Inclinazione X: <span id="txt-tilt-x" class="text-emerald-400 font-bold">0.0°</span></div>
             <div>Inclinazione Y: <span id="txt-tilt-y" class="text-emerald-400 font-bold">0.0°</span></div>
         </div>
     </main>
 
-    <!-- FOOTER: Controlli e Selezione della modalità -->
-    <footer class="w-full p-4 bg-slate-900 border-t border-slate-800 backdrop-blur-md z-10 flex flex-col gap-3">
-        <div class="max-w-md mx-auto w-full flex flex-col gap-3">
+    <!-- FOOTER: Controlli, Inserimento Coordinate e Diagnostica Spostata sotto -->
+    <footer class="w-full p-4 bg-slate-900 border-t border-slate-800 backdrop-blur-md z-10 flex flex-col gap-2.5">
+        <div class="max-w-md mx-auto w-full flex flex-col gap-2.5">
             
-            <!-- Pulsante Principale di Sblocco Sensori (Spicca moltissimo) -->
-            <button id="btn-sensors" class="w-full bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg neon-glow-cyan flex items-center justify-center gap-2">
-                🚀 SBLOCCA GPS & LIVELLA
-            </button>
-
-            <!-- Coordinate Manuali ed inserimento libero -->
-            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl flex flex-col gap-2">
+            <!-- Coordinate Manuali ed inserimento libero (Sollevato in alto nel footer per evitare sovrapposizioni) -->
+            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl flex flex-col gap-2 shadow-inner">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                     <span>Imposta Coordinate Locali</span>
                     <button id="btn-gps-trigger" class="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
@@ -110,6 +79,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- DIAGNOSTICA DEI SENSORI (Spostata Sotto, pulita e compatta) -->
+            <div class="bg-slate-950/60 border border-slate-850 rounded-xl p-2.5 text-[10px] flex flex-col gap-1.5">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider text-[9px]">Diagnostica e Stato</span>
+                    <span id="status-badge" class="px-2 py-0.5 rounded-full text-[8px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Pronto</span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 text-[10px] font-mono">
+                    <div class="flex items-center gap-1.5 text-slate-400">
+                        <span id="diag-https-icon">⚪</span> HTTPS Sicura:
+                    </div>
+                    <div id="diag-https-val" class="text-right font-bold text-slate-400">Verifica...</div>
+
+                    <div class="flex items-center gap-1.5 text-slate-400">
+                        <span id="diag-sensors-icon">⚪</span> Sensore Livella:
+                    </div>
+                    <div id="diag-sensors-val" class="text-right font-bold text-slate-400">Verifica...</div>
+                </div>
+                
+                <!-- Messaggio d'aiuto per sbloccare i sensori -->
+                <div id="help-alert" class="text-[10px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-lg p-1.5 mt-0.5 hidden">
+                    ⚠️ Sensori fisici bloccati. Premi il pulsante sotto per attivarli.
+                </div>
+            </div>
+
+            <!-- Pulsante Principale di Sblocco Sensori (In fondo, molto visibile) -->
+            <button id="btn-sensors" class="w-full bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg neon-glow-cyan flex items-center justify-center gap-2">
+                🚀 SBLOCCA GPS & LIVELLA
+            </button>
         </div>
     </footer>
 

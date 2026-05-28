@@ -3,6 +3,7 @@ const state = {
     lat: 45.7272,       // Latitudine Ponte di Piave
     lon: 12.4632,       // Longitudine Ponte di Piave
     manualHeading: 0,   // Orientamento della bussola solare impostato dall'utente
+    magneticHeading: null, // Bussola magnetica hardware reale (per freccia blu)
     tiltX: 0,           // Inclinazione sinistra/destra (Gamma)
     tiltY: 0,           // Inclinazione avanti/indietro (Beta)
     smoothTiltX: 0,     // Valori smorzati per la fisica della bolla
@@ -146,7 +147,7 @@ function updateLevelBubble() {
     state.smoothTiltY += (state.tiltY - state.smoothTiltY) * damping;
 }
 
-// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA + LINEA NORD LUNGA) ---
+// --- RENDERING CANVAS (BUSSOLA + SOLE + OMBRA + LIVELLA + LINEA NORD LUNGA + NORD MAGNETICO SOFT) ---
 function draw() {
     const w = canvas.width / (window.devicePixelRatio || 1);
     const h = canvas.height / (window.devicePixelRatio || 1);
@@ -169,6 +170,47 @@ function draw() {
     ctx.lineTo(cx, h); // Fino a sotto lo schermo
     ctx.stroke();
     ctx.restore();
+
+    // --- DISEGNO DEL NORD MAGNETICO PASSIVO (FRECCIA BLU POCO VISTOSA) ---
+    // Questa freccia ruota rispetto al Nord astronomico manuale impostato dall'utente.
+    // Indica la direzione del Nord Magnetico reale se il sensore è attivo.
+    if (state.magneticHeading !== null) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        
+        // Calcolo dell'angolo magnetico relativo all'orientamento manuale corrente della meridiana
+        // La freccia magnetica deve indicare la differenza tra l'inclinazione del telefono e il nord reale.
+        const magAngleRad = (state.magneticHeading - curHeading) * Math.PI / 180;
+        
+        ctx.rotate(magAngleRad);
+
+        // Disegno di una freccia blu neon sottile e poco vistosa
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)'; // Cyan/Blu trasparente e morbido
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]); // Linea tratteggiata per non confondersi con la linea di mira
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -r + 28);
+        ctx.stroke();
+        ctx.setLineDash([]); // Ripristina linea continua
+
+        // Punta della freccia blu magnetica
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.7)';
+        ctx.beginPath();
+        ctx.moveTo(0, -r + 14);
+        ctx.lineTo(-4, -r + 24);
+        ctx.lineTo(4, -r + 24);
+        ctx.closePath();
+        ctx.fill();
+
+        // Piccolo testo indicante il Nord Magnetico
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.8)';
+        ctx.font = 'bold 7px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('N. MAGNETICO', 0, -r + 8);
+
+        ctx.restore();
+    }
 
     // --- 1. DISEGNO DEL QUADRANTE ROTANTE DELLA BUSSOLA ---
     ctx.save();
@@ -396,6 +438,13 @@ function handleOrientation(event) {
     state.tiltX = event.gamma || 0; // Inclinazione sinistra/destra
     state.tiltY = event.beta || 0;  // Inclinazione avanti/dietro
 
+    // Lettura bussola magnetica passiva (per la sola freccia blu magnetica)
+    if (event.webkitCompassHeading !== undefined) {
+        state.magneticHeading = event.webkitCompassHeading;
+    } else if (event.alpha !== null) {
+        state.magneticHeading = (360 - event.alpha) % 360;
+    }
+
     // Aggiorna testi digitali inclinazione
     txtTiltX.textContent = `${state.tiltX.toFixed(1)}°`;
     txtTiltY.textContent = `${state.tiltY.toFixed(1)}°`;
@@ -418,7 +467,7 @@ async function sbloccaSensori() {
     btnSensors.textContent = "ATTIVAZIONE IN CORSO...";
     rilevaGPS();
 
-    // Richiesta accelerometro/giroscopio per livella
+    // Richiesta accelerometro/giroscopio per livella e bussola
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceOrientationEvent.requestPermission();
@@ -470,6 +519,7 @@ function rilevaGPS() {
 }
 
 function connettiSensori() {
+    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     window.addEventListener('deviceorientation', handleOrientation, true);
 }
 
@@ -487,11 +537,13 @@ function dragStart(clientX, clientY) {
     state.dragStartHeading = state.manualHeading;
 }
 
+// Rotazione fluida tramite gesture - INVERTITA per assecondare il trascinamento del dito!
 function dragMove(clientX, clientY) {
     if (!state.isDragging) return;
     const curAngle = getAngleFromCenter(clientX, clientY);
     const delta = curAngle - state.dragStartAngle;
-    state.manualHeading = (state.dragStartHeading + delta + 360) % 360;
+    // Invertito da '+ delta' a '- delta' per rendere la rotazione naturale
+    state.manualHeading = (state.dragStartHeading - delta + 360) % 360;
     draw();
 }
 
@@ -518,7 +570,6 @@ function gestisciInputCoordinate() {
     const parsedLat = parseFloat(inputLat.value);
     const parsedLon = parseFloat(inputLon.value);
 
-    // Valida i limiti geometrici
     if (!isNaN(parsedLat) && parsedLat >= -90 && parsedLat <= 90) {
         state.lat = parsedLat;
     }
@@ -526,7 +577,6 @@ function gestisciInputCoordinate() {
         state.lon = parsedLon;
     }
 
-    // Se si inseriscono le coordinate di Ponte di Piave a mano, mostriamo il nome predefinito
     if (Math.abs(state.lat - 45.7272) < 0.01 && Math.abs(state.lon - 12.4632) < 0.01) {
         lblPos.textContent = "Ponte di Piave (Manuale)";
     } else {
