@@ -21,10 +21,11 @@ const state = {
     // Parametri Mappa geografica sotto la bussola
     mapActive: false,
     mapZoom: 15,
-    mapType: 'dark',
+    mapType: 'satellite',
     map: null,
     observerMarker: null,
     mapLayers: {},
+    lockRotation: false,
     
     // Parametri Azimut Personalizzato
     personalAzActive: false,
@@ -73,6 +74,7 @@ const mapControls = document.getElementById('map-controls');
 const selectMapType = document.getElementById('select-map-type');
 const sliderMapZoom = document.getElementById('slider-map-zoom');
 const lblMapZoom = document.getElementById('lbl-map-zoom');
+const checkLockRotation = document.getElementById('check-lock-rotation');
 const checkAzimuthActive = document.getElementById('check-azimuth-active');
 const azimuthValContainer = document.getElementById('azimuth-val-container');
 const inputAzimuthValue = document.getElementById('input-azimuth-value');
@@ -792,12 +794,30 @@ function initOrUpdateMap() {
             zoom: state.mapZoom,
             zoomControl: false,
             attributionControl: false,
-            dragging: false,
+            dragging: state.lockRotation,
             scrollWheelZoom: false,
             touchZoom: false,
             doubleClickZoom: false,
             boxZoom: false,
             keyboard: false
+        });
+
+        // Evento trascinamento per centratura fine
+        state.map.on('drag', () => {
+            if (!state.lockRotation) return;
+            const center = state.map.getCenter();
+            state.lat = center.lat;
+            state.lon = center.lng;
+
+            if (inputLat) inputLat.value = state.lat.toFixed(5);
+            if (inputLon) inputLon.value = state.lon.toFixed(5);
+
+            if (state.observerMarker) {
+                state.observerMarker.setLatLng(center);
+            }
+
+            // Ricalcola istantaneamente sole e ombre con la nuova posizione
+            calcolaPosizioneSole();
         });
 
         // Configura i Layer
@@ -818,6 +838,9 @@ function initOrUpdateMap() {
 
         // Posiziona il marker dell'osservatore al centro
         addObserverMarker();
+
+        // Applica lo stato iniziale di blocco/traslazione
+        updateLockRotationMode();
 
         // Forza rinfresco dimensioni
         setTimeout(() => {
@@ -847,6 +870,40 @@ function addObserverMarker() {
 function aggiornaMappaSeAttiva() {
     if (state.mapActive) {
         initOrUpdateMap();
+    }
+}
+
+function updateLockRotationMode() {
+    if (!state.map) return;
+    
+    if (state.lockRotation) {
+        // Abilita il dragging di Leaflet
+        state.map.dragging.enable();
+        
+        // Passa gli eventi mouse attraverso il canvas alla mappa sottostante
+        if (canvas) {
+            canvas.style.pointerEvents = 'none';
+            canvas.style.cursor = 'default';
+        }
+        if (dialMap) {
+            dialMap.style.pointerEvents = 'auto';
+            dialMap.style.cursor = 'grab';
+            dialMap.style.transform = 'rotate(0deg)';
+        }
+    } else {
+        // Disabilita il dragging di Leaflet
+        state.map.dragging.disable();
+        
+        // Ripristina gli eventi sul canvas per la rotazione della bussola
+        if (canvas) {
+            canvas.style.pointerEvents = 'auto';
+            canvas.style.cursor = 'grab';
+        }
+        if (dialMap) {
+            dialMap.style.pointerEvents = 'none';
+            dialMap.style.cursor = 'default';
+            dialMap.style.transform = `rotate(${-state.manualHeading}deg)`;
+        }
     }
 }
 
@@ -895,6 +952,13 @@ if (sliderMapZoom) {
         if (state.map) {
             state.map.setZoom(val);
         }
+    });
+}
+
+if (checkLockRotation) {
+    checkLockRotation.addEventListener('change', (e) => {
+        state.lockRotation = e.target.checked;
+        updateLockRotationMode();
     });
 }
 
@@ -984,7 +1048,11 @@ function loopGrafico() {
         
         // Sincronizzazione della rotazione della mappa con il quadrante
         if (state.mapActive && dialMap) {
-            dialMap.style.transform = `rotate(${-state.manualHeading}deg)`;
+            if (state.lockRotation) {
+                dialMap.style.transform = 'rotate(0deg)';
+            } else {
+                dialMap.style.transform = `rotate(${-state.manualHeading}deg)`;
+            }
         }
     } catch (e) {
         console.error("Errore loop grafico:", e);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v9'; // Aggiornato a v9 per supportare la mappa Leaflet ed offline
+const CACHE_NAME = 'meridiana-v10'; // Aggiornato a v10 per supportare la Centratura Fine della mappa
 const ASSETS = [
   './',
   './index.html',
