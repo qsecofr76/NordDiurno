@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v11'; // Aggiornato a v11 per correggere bubbling degli eventi touch su Leaflet
+const CACHE_NAME = 'meridiana-v12'; // Aggiornato a v12 per correggere la transizione CSS rotazionale brusca della mappa
 const ASSETS = [
   './',
   './index.html',
