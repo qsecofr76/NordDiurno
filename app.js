@@ -286,19 +286,20 @@ function draw() {
         for (let deg = 0; deg < 360; deg += 10) {
             const angle = deg * Math.PI / 180;
             const isMajor = deg % 30 === 0;
+            const tickLen = isMajor ? r * 0.09 : r * 0.045;
             ctx.strokeStyle = isMajor ? '#64748b' : '#334155';
-            ctx.lineWidth = isMajor ? 2 : 1;
+            ctx.lineWidth = isMajor ? Math.max(1.5, r * 0.015) : 1;
             ctx.beginPath();
-            ctx.moveTo((r - (isMajor ? 12 : 6)) * Math.sin(angle), -(r - (isMajor ? 12 : 6)) * Math.cos(angle));
+            ctx.moveTo((r - tickLen) * Math.sin(angle), -(r - tickLen) * Math.cos(angle));
             ctx.lineTo(r * Math.sin(angle), -r * Math.cos(angle));
             ctx.stroke();
 
             if (isMajor && deg !== 0 && deg !== 90 && deg !== 180 && deg !== 270) {
                 ctx.save();
-                ctx.translate((r - 20) * Math.sin(angle), -(r - 20) * Math.cos(angle));
+                ctx.translate((r * 0.84) * Math.sin(angle), -(r * 0.84) * Math.cos(angle));
                 ctx.rotate(angle);
                 ctx.fillStyle = '#94a3b8';
-                ctx.font = 'bold 8px monospace';
+                ctx.font = `bold ${Math.max(7, Math.round(r * 0.062))}px monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(`${deg}°`, 0, 0);
@@ -316,33 +317,33 @@ function draw() {
         pts.forEach(p => {
             const angleRad = p.angle * Math.PI / 180;
             ctx.fillStyle = p.color;
-            ctx.font = '900 16px sans-serif';
+            ctx.font = `900 ${Math.max(12, Math.round(r * 0.125))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(p.label, (r - 20) * Math.sin(angleRad), -(r - 20) * Math.cos(angleRad));
+            ctx.fillText(p.label, (r * 0.84) * Math.sin(angleRad), -(r * 0.84) * Math.cos(angleRad));
         });
 
         // Nord Celeste (Frecce ed asse rosso ridimensionati per non sovrapporsi a 'N')
         ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = Math.max(2, r * 0.03);
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, -r + 44);
+        ctx.lineTo(0, -r * 0.65);
         ctx.stroke();
 
         // Sud Celeste (Prolungamento asse rosso tratteggiato)
         ctx.setLineDash([8, 8]);
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, r - 44);
+        ctx.lineTo(0, r * 0.65);
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.moveTo(0, -r + 34);
-        ctx.lineTo(-6, -r + 44);
-        ctx.lineTo(6, -r + 44);
+        ctx.moveTo(0, -r * 0.72);
+        ctx.lineTo(-r * 0.05, -r * 0.65);
+        ctx.lineTo(r * 0.05, -r * 0.65);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -355,7 +356,7 @@ function draw() {
             ctx.rotate(magAngleRad);
 
             ctx.strokeStyle = '#0ea5e9'; // Blu
-            ctx.lineWidth = 3;
+            ctx.lineWidth = Math.max(2, r * 0.024);
             ctx.setLineDash([8, 8]);
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -367,7 +368,7 @@ function draw() {
             ctx.translate(0, -r * 0.8);
             ctx.rotate(-Math.PI / 2); // Ruota il testo di 90 gradi per scriverlo lungo la linea
             ctx.fillStyle = '#0ea5e9';
-            ctx.font = '900 10px sans-serif';
+            ctx.font = `900 ${Math.max(8, Math.round(r * 0.08))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText('NORD MAGNETICO', 0, -6);
 
@@ -381,7 +382,7 @@ function draw() {
             ctx.translate(cx, cy);
             ctx.rotate(-curHeading * Math.PI / 180);
             ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = Math.max(1, r * 0.012);
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -396,7 +397,7 @@ function draw() {
             if (state.sun.azimuth > 90 && state.sun.azimuth < 270) sunTextAngle += Math.PI;
             ctx.rotate(sunTextAngle);
             ctx.fillStyle = 'rgba(245, 158, 11, 0.7)';
-            ctx.font = '800 10px sans-serif';
+            ctx.font = `800 ${Math.max(8, Math.round(r * 0.08))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText('SOLE', 0, -6);
             ctx.restore();
@@ -415,7 +416,7 @@ function draw() {
                 shadowGrad.addColorStop(1, 'rgba(57, 255, 20, 0)');
 
                 ctx.strokeStyle = shadowGrad;
-                ctx.lineWidth = 14;
+                ctx.lineWidth = Math.max(8, r * 0.11);
                 ctx.lineCap = 'round';
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -423,7 +424,7 @@ function draw() {
                 ctx.stroke();
 
                 ctx.strokeStyle = '#39ff14';
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = Math.max(1.5, r * 0.02);
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
                 ctx.lineTo(endX, endY);
@@ -435,13 +436,13 @@ function draw() {
                 if (shadowAzimuth > 90 && shadowAzimuth < 270) textAngle += Math.PI;
                 ctx.rotate(textAngle);
                 ctx.fillStyle = '#39ff14';
-                ctx.font = '900 11px sans-serif';
+                ctx.font = `900 ${Math.max(9, Math.round(r * 0.085))}px sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.fillText('OMBRA', 0, -8);
                 ctx.restore();
             } else {
                 ctx.fillStyle = '#64748b';
-                ctx.font = 'italic 10px sans-serif';
+                ctx.font = `italic ${Math.max(8, Math.round(r * 0.08))}px sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.fillText('Sole tramontato', 0, r * 0.4);
             }
@@ -477,7 +478,7 @@ function draw() {
             ctx.rotate(azTextAngle);
             
             ctx.fillStyle = '#ec4899';
-            ctx.font = 'bold 9px sans-serif';
+            ctx.font = `bold ${Math.max(7, Math.round(r * 0.07))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText(`AZIMUT: ${azVal}°`, 0, -6);
             ctx.restore();
@@ -486,24 +487,25 @@ function draw() {
         ctx.restore();
 
         // --- 2. DISEGNO LIVELLA A BOLLA 3D FISSA ---
+        const lvlR = r * 0.25; // Raggio della livella centrale (proporzionale)
         ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = Math.max(2, r * 0.027);
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.beginPath();
-        ctx.arc(cx, cy, 32, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, lvlR, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
 
         ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(cx, cy, 14, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, lvlR * 0.44, 0, 2 * Math.PI);
         ctx.stroke();
 
         ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
         ctx.beginPath();
-        ctx.moveTo(cx - 32, cy); ctx.lineTo(cx + 32, cy);
-        ctx.moveTo(cx, cy - 32); ctx.lineTo(cx, cy + 32);
+        ctx.moveTo(cx - lvlR, cy); ctx.lineTo(cx + lvlR, cy);
+        ctx.moveTo(cx, cy - lvlR); ctx.lineTo(cx, cy + lvlR);
         ctx.stroke();
 
         // Fisica bolla
@@ -511,12 +513,13 @@ function draw() {
         let clampedX = Math.max(-maxTiltValue, Math.min(maxTiltValue, state.smoothTiltX));
         let clampedY = Math.max(-maxTiltValue, Math.min(maxTiltValue, state.smoothTiltY));
 
-        const maxShiftPixels = 24;
+        const maxShiftPixels = lvlR * 0.75;
         const bubbleX = cx - (clampedX / maxTiltValue) * maxShiftPixels;
         const bubbleY = cy - (clampedY / maxTiltValue) * maxShiftPixels;
 
         const totalTiltAngle = Math.sqrt(state.tiltX * state.tiltX + state.tiltY * state.tiltY);
-        let bubbleGradient = ctx.createRadialGradient(bubbleX - 3, bubbleY - 3, 1, bubbleX, bubbleY, 8);
+        const bubbleR = lvlR * 0.25;
+        let bubbleGradient = ctx.createRadialGradient(bubbleX - bubbleR * 0.35, bubbleY - bubbleR * 0.35, 1, bubbleX, bubbleY, bubbleR);
 
         if (totalTiltAngle < 1.3) {
             bubbleGradient.addColorStop(0, '#4ade80');
@@ -531,24 +534,24 @@ function draw() {
 
         ctx.fillStyle = bubbleGradient;
         ctx.beginPath();
-        ctx.arc(bubbleX, bubbleY, 8, 0, 2 * Math.PI);
+        ctx.arc(bubbleX, bubbleY, bubbleR, 0, 2 * Math.PI);
         ctx.fill();
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.beginPath();
-        ctx.arc(bubbleX - 3, bubbleY - 3, 2.5, 0, 2 * Math.PI);
+        ctx.arc(bubbleX - bubbleR * 0.35, bubbleY - bubbleR * 0.35, bubbleR * 0.3, 0, 2 * Math.PI);
         ctx.fill();
 
         // Gnomone centrale
         ctx.strokeStyle = '#22d3ee';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, lvlR * 0.09, 0, 2 * Math.PI);
         ctx.stroke();
 
         ctx.fillStyle = '#22d3ee';
         ctx.beginPath();
-        ctx.arc(cx, cy, 1, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, lvlR * 0.03, 0, 2 * Math.PI);
         ctx.fill();
     } catch (e) {
         console.error("Errore disegno Canvas:", e);
@@ -1104,6 +1107,21 @@ if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEve
         console.error("Errore autostart:", e);
     }
 }
+
+// Gestione del ridimensionamento dinamico dello schermo (per desktop e rotazione mobile)
+window.addEventListener('resize', () => {
+    try {
+        resizeCanvas();
+        draw();
+        if (state.map) {
+            setTimeout(() => {
+                state.map.invalidateSize();
+            }, 100);
+        }
+    } catch (e) {
+        console.error("Errore durante il resize del canvas:", e);
+    }
+});
 
 // --- REGISTRAZIONE SERVICE WORKER PER PWA ---
 if ('serviceWorker' in navigator) {

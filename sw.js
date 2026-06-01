@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v13'; // Aggiornato a v13 per impostare le coordinate di osservazione esatte sull'argine
+const CACHE_NAME = 'meridiana-v14'; // Aggiornato a v14 per supportare la bussola ridimensionabile e responsive su schermi grandi
 const ASSETS = [
   './',
   './index.html',

@@ -51,7 +51,7 @@
     </header>
 
     <!-- AREA CENTRALE: Grafica della Meridiana, Gradi Azimut e Livella Integrata -->
-    <main class="flex-grow flex flex-col items-center justify-center relative px-4 w-full max-w-md mx-auto py-1">
+    <main class="flex-grow flex flex-col items-center justify-center relative px-4 w-full max-w-md md:max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto py-1">
         
         <!-- Istruzione visiva rapida -->
         <div class="text-[9px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 animate-pulse-soft">
@@ -59,7 +59,7 @@
         </div>
 
         <!-- Contenitore del Canvas -->
-        <div class="relative w-full aspect-square max-w-[290px] md:max-w-[330px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl overflow-hidden">
+        <div class="relative w-full aspect-square max-w-[290px] md:max-w-[420px] lg:max-w-[500px] xl:max-w-[600px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl overflow-hidden">
             <!-- Mappa geografica in trasparenza Leaflet -->
             <div id="dialMap" class="absolute inset-1 rounded-full overflow-hidden hidden z-0 bg-slate-950 transition-opacity duration-200"></div>
             <!-- Canvas ad alta risoluzione -->
