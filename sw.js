@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v10'; // Aggiornato a v10 per supportare la Centratura Fine della mappa
+const CACHE_NAME = 'meridiana-v11'; // Aggiornato a v11 per correggere bubbling degli eventi touch su Leaflet
 const ASSETS = [
   './',
   './index.html',

@@ -720,16 +720,30 @@ function dragEnd() {
     state.isDragging = false;
 }
 
-canvas.addEventListener('mousedown', (e) => dragStart(e.clientX, e.clientY));
-window.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
+canvas.addEventListener('mousedown', (e) => {
+    dragStart(e.clientX, e.clientY);
+    e.preventDefault();
+});
+window.addEventListener('mousemove', (e) => {
+    if (state.isDragging) {
+        dragMove(e.clientX, e.clientY);
+        e.preventDefault();
+    }
+});
 window.addEventListener('mouseup', dragEnd);
 
 canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) dragStart(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: true });
+    if (e.touches.length === 1) {
+        dragStart(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }
+}, { passive: false });
 canvas.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1) dragMove(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: true });
+    if (e.touches.length === 1) {
+        dragMove(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }
+}, { passive: false });
 canvas.addEventListener('touchend', dragEnd);
 
 // --- GESTIONE CAMPI DI INPUT MANUALE COORDINATE ---
