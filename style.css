@@ -3,10 +3,9 @@
 
 /* Regole per bloccare i gesti nativi e migliorare l'esperienza mobile */
 html, body {
-    overscroll-behavior: none;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none;
+    touch-action: pan-y;
     background-color: #020617; /* Sfondo ultra scuro Slate-950 per massimo contrasto */
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -25,6 +24,27 @@ code, pre, .font-mono {
 }
 
 /* Ottimizzazioni per il canvas e l'allineamento dello gnomone fisico */
+#dialContainer {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: min(290px, 52vh);
+}
+@media (min-width: 768px) {
+    #dialContainer {
+        max-width: min(420px, 52vh);
+    }
+}
+@media (min-width: 1024px) {
+    #dialContainer {
+        max-width: min(500px, 52vh);
+    }
+}
+@media (min-width: 1280px) {
+    #dialContainer {
+        max-width: min(600px, 52vh);
+    }
+}
+
 #dialCanvas {
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
