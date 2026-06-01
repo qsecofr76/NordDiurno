@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v12'; // Aggiornato a v12 per correggere la transizione CSS rotazionale brusca della mappa
+const CACHE_NAME = 'meridiana-v13'; // Aggiornato a v13 per impostare le coordinate di osservazione esatte sull'argine
 const ASSETS = [
   './',
   './index.html',

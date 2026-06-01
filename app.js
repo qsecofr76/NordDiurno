@@ -1,7 +1,7 @@
-// Stato dell'applicazione con valori di default su Ponte di Piave (Treviso)
+// Stato dell'applicazione con valori di default su Ponte di Piave (Treviso) - Punto di osservazione sull'argine
 const state = {
-    lat: 45.7272,       // Latitudine Ponte di Piave
-    lon: 12.4632,       // Longitudine Ponte di Piave
+    lat: 45.716370,     // Latitudine Argine Ponte di Piave
+    lon: 12.456541,     // Longitudine Argine Ponte di Piave
     manualHeading: 0,   // Orientamento della bussola solare impostato dall'utente
     magneticHeading: null, // Bussola magnetica hardware reale (per freccia blu)
     tiltX: 0,           // Inclinazione sinistra/destra (Gamma)
@@ -759,8 +759,8 @@ function gestisciInputCoordinate() {
             state.lon = parsedLon;
         }
 
-        if (Math.abs(state.lat - 45.7272) < 0.01 && Math.abs(state.lon - 12.4632) < 0.01) {
-            lblPos.textContent = "Ponte di Piave (Manuale)";
+        if (Math.abs(state.lat - 45.716370) < 0.01 && Math.abs(state.lon - 12.456541) < 0.01) {
+            lblPos.textContent = "Ponte di Piave (Argine - Manuale)";
         } else {
             lblPos.textContent = "Coordinata Manuale";
         }
