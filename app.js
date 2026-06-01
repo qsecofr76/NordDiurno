@@ -819,7 +819,7 @@ function initOrUpdateMap() {
             keyboard: false
         });
 
-        // Evento trascinamento per centratura fine
+        // Evento trascinamento per centratura XY
         state.map.on('drag', () => {
             if (!state.lockRotation) return;
             const center = state.map.getCenter();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v14'; // Aggiornato a v14 per supportare la bussola ridimensionabile e responsive su schermi grandi
+const CACHE_NAME = 'meridiana-v15'; // Aggiornato a v15 per la ridenominazione Centratura Fine in Centratura XY
 const ASSETS = [
   './',
   './index.html',
