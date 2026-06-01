@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meridiana-v8'; // Aggiornato a v8 per forzare il refresh immediato sui telefoni
+const CACHE_NAME = 'meridiana-v9'; // Aggiornato a v9 per supportare la mappa Leaflet ed offline
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,9 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://cdn.tailwindcss.com'
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 // Installazione Service Worker e Caching Risorse

@@ -16,7 +16,19 @@ const state = {
     },
     isDragging: false,
     dragStartAngle: 0,
-    dragStartHeading: 0
+    dragStartHeading: 0,
+    
+    // Parametri Mappa geografica sotto la bussola
+    mapActive: false,
+    mapZoom: 15,
+    mapType: 'dark',
+    map: null,
+    observerMarker: null,
+    mapLayers: {},
+    
+    // Parametri Azimut Personalizzato
+    personalAzActive: false,
+    personalAzValue: 180
 };
 
 const canvas = document.getElementById('dialCanvas');
@@ -53,6 +65,19 @@ const diagSensorsIcon = document.getElementById('diag-sensors-icon');
 const diagSensorsVal = document.getElementById('diag-sensors-val');
 const diagMagIcon = document.getElementById('diag-mag-icon');
 const diagMagVal = document.getElementById('diag-mag-val');
+
+// Elementi DOM Mappa e Azimut Personalizzato
+const dialMap = document.getElementById('dialMap');
+const checkMapActive = document.getElementById('check-map-active');
+const mapControls = document.getElementById('map-controls');
+const selectMapType = document.getElementById('select-map-type');
+const sliderMapZoom = document.getElementById('slider-map-zoom');
+const lblMapZoom = document.getElementById('lbl-map-zoom');
+const checkAzimuthActive = document.getElementById('check-azimuth-active');
+const azimuthValContainer = document.getElementById('azimuth-val-container');
+const inputAzimuthValue = document.getElementById('input-azimuth-value');
+const azimuthSliderContainer = document.getElementById('azimuth-slider-container');
+const sliderAzimuthValue = document.getElementById('slider-azimuth-value');
 
 // --- RIDIMENSIONAMENTO E DENSITY PIXELS DEL CANVAS ---
 function resizeCanvas() {
@@ -241,7 +266,7 @@ function draw() {
 
         ctx.strokeStyle = '#475569';
         ctx.lineWidth = 3;
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = state.mapActive ? 'rgba(15, 23, 42, 0.45)' : '#0f172a';
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, 2 * Math.PI);
         ctx.fill();
@@ -418,6 +443,42 @@ function draw() {
                 ctx.textAlign = 'center';
                 ctx.fillText('Sole tramontato', 0, r * 0.4);
             }
+        }
+
+        // --- DISEGNO AZIMUT PERSONALIZZATO (LINEA TRATTEGGIATA ROSA/MAGENTA NEON) ---
+        if (state.personalAzActive) {
+            const azVal = Number(state.personalAzValue) || 0;
+            const azRad = azVal * Math.PI / 180;
+            const endX = r * Math.sin(azRad);
+            const endY = -r * Math.cos(azRad);
+
+            ctx.save();
+            ctx.strokeStyle = '#ec4899'; // Rosa neon / magenta
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Cerchietto terminale neon
+            ctx.fillStyle = '#ec4899';
+            ctx.beginPath();
+            ctx.arc(endX * 0.95, endY * 0.95, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Etichetta testuale
+            ctx.translate(endX * 0.72, endY * 0.72);
+            let azTextAngle = azRad - Math.PI / 2;
+            if (azVal > 90 && azVal < 270) azTextAngle += Math.PI;
+            ctx.rotate(azTextAngle);
+            
+            ctx.fillStyle = '#ec4899';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`AZIMUT: ${azVal}°`, 0, -6);
+            ctx.restore();
         }
 
         ctx.restore();
@@ -605,6 +666,7 @@ function rilevaGPS() {
                     lblPos.textContent = "GPS Attivo";
                     
                     calcolaPosizioneSole();
+                    aggiornaMappaSeAttiva();
                 },
                 (err) => {
                     console.warn("GPS non raggiungibile.");
@@ -688,6 +750,7 @@ function gestisciInputCoordinate() {
         }
 
         calcolaPosizioneSole();
+        aggiornaMappaSeAttiva();
     } catch (e) {
         console.error("Errore input coordinate:", e);
     }
@@ -697,6 +760,186 @@ inputLat.addEventListener('input', gestisciInputCoordinate);
 inputLon.addEventListener('input', gestisciInputCoordinate);
 btnGpsTrigger.addEventListener('click', rilevaGPS);
 btnSensors.addEventListener('click', sbloccaSensori);
+
+// --- SISTEMA DI INIZIALIZZAZIONE E GESTIONE MAPPA LEAFLET ---
+function initOrUpdateMap() {
+    try {
+        if (!state.mapActive) return;
+        if (!dialMap) return;
+
+        dialMap.classList.remove('hidden');
+
+        // Se l'istanza della mappa esiste già, aggiorna la vista e il marker
+        if (state.map) {
+            state.map.setView([state.lat, state.lon], state.mapZoom);
+            
+            // Rimuove eventuali marker precedenti per evitare duplicati
+            if (state.observerMarker) {
+                state.map.removeLayer(state.observerMarker);
+            }
+            addObserverMarker();
+            
+            // Forza l'aggiornamento grafico
+            setTimeout(() => {
+                state.map.invalidateSize();
+            }, 50);
+            return;
+        }
+
+        // Inizializza l'istanza Leaflet
+        state.map = L.map('dialMap', {
+            center: [state.lat, state.lon],
+            zoom: state.mapZoom,
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            touchZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false
+        });
+
+        // Configura i Layer
+        state.mapLayers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        });
+
+        state.mapLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19
+        });
+
+        // Applica il layer selezionato
+        if (state.mapType === 'dark') {
+            state.mapLayers.dark.addTo(state.map);
+        } else {
+            state.mapLayers.satellite.addTo(state.map);
+        }
+
+        // Posiziona il marker dell'osservatore al centro
+        addObserverMarker();
+
+        // Forza rinfresco dimensioni
+        setTimeout(() => {
+            state.map.invalidateSize();
+        }, 100);
+
+    } catch (e) {
+        console.error("Errore inizializzazione mappa Leaflet:", e);
+    }
+}
+
+function addObserverMarker() {
+    try {
+        if (!state.map) return;
+        const observerIcon = L.divIcon({
+            className: 'observer-marker',
+            html: `<div style="width: 14px; height: 14px; border-radius: 50%; background-color: #0ea5e9; border: 2.5px solid #fff; box-shadow: 0 0 12px #0ea5e9, 0 0 4px rgba(255,255,255,0.8);"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+        state.observerMarker = L.marker([state.lat, state.lon], { icon: observerIcon }).addTo(state.map);
+    } catch (e) {
+        console.error("Errore posizionamento marker osservatore:", e);
+    }
+}
+
+function aggiornaMappaSeAttiva() {
+    if (state.mapActive) {
+        initOrUpdateMap();
+    }
+}
+
+// --- ASCOLTATORI EVENTI CONTROLLI MAPPA E AZIMUT ---
+if (checkMapActive) {
+    checkMapActive.addEventListener('change', (e) => {
+        state.mapActive = e.target.checked;
+        if (state.mapActive) {
+            mapControls.classList.remove('hidden');
+            dialMap.classList.remove('hidden');
+            initOrUpdateMap();
+        } else {
+            mapControls.classList.add('hidden');
+            dialMap.classList.add('hidden');
+            if (state.map) {
+                // Rimuoviamo la mappa e resettiamo l'istanza per risparmiare risorse
+                state.map.remove();
+                state.map = null;
+                state.observerMarker = null;
+            }
+        }
+    });
+}
+
+if (selectMapType) {
+    selectMapType.addEventListener('change', (e) => {
+        state.mapType = e.target.value;
+        if (state.map) {
+            if (state.map.hasLayer(state.mapLayers.dark)) state.map.removeLayer(state.mapLayers.dark);
+            if (state.map.hasLayer(state.mapLayers.satellite)) state.map.removeLayer(state.mapLayers.satellite);
+
+            if (state.mapType === 'dark') {
+                state.mapLayers.dark.addTo(state.map);
+            } else {
+                state.mapLayers.satellite.addTo(state.map);
+            }
+        }
+    });
+}
+
+if (sliderMapZoom) {
+    sliderMapZoom.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        state.mapZoom = val;
+        lblMapZoom.textContent = val;
+        if (state.map) {
+            state.map.setZoom(val);
+        }
+    });
+}
+
+if (checkAzimuthActive) {
+    checkAzimuthActive.addEventListener('change', (e) => {
+        state.personalAzActive = e.target.checked;
+        if (state.personalAzActive) {
+            azimuthValContainer.classList.remove('hidden');
+            azimuthValContainer.classList.add('flex');
+            azimuthSliderContainer.classList.remove('hidden');
+            azimuthSliderContainer.classList.add('flex');
+        } else {
+            azimuthValContainer.classList.add('hidden');
+            azimuthValContainer.classList.remove('flex');
+            azimuthSliderContainer.classList.add('hidden');
+            azimuthSliderContainer.classList.remove('flex');
+        }
+    });
+}
+
+function aggiornaValoreAzimut(val) {
+    let num = parseInt(val);
+    if (isNaN(num)) num = 0;
+    num = (num % 360 + 360) % 360; // range 0-359
+    state.personalAzValue = num;
+    
+    if (inputAzimuthValue && inputAzimuthValue.value != num) {
+        inputAzimuthValue.value = num;
+    }
+    if (sliderAzimuthValue && sliderAzimuthValue.value != num) {
+        sliderAzimuthValue.value = num;
+    }
+}
+
+if (sliderAzimuthValue) {
+    sliderAzimuthValue.addEventListener('input', (e) => {
+        aggiornaValoreAzimut(e.target.value);
+    });
+}
+
+if (inputAzimuthValue) {
+    inputAzimuthValue.addEventListener('input', (e) => {
+        aggiornaValoreAzimut(e.target.value);
+    });
+}
 
 // --- LOOP DEDICATO ALL'OROLOGIO E ALL'ASTRONOMIA (1 VOLTA AL SECONDO) ---
 setInterval(() => {
@@ -738,6 +981,11 @@ function loopGrafico() {
 
         updateLevelBubble();
         draw();
+        
+        // Sincronizzazione della rotazione della mappa con il quadrante
+        if (state.mapActive && dialMap) {
+            dialMap.style.transform = `rotate(${-state.manualHeading}deg)`;
+        }
     } catch (e) {
         console.error("Errore loop grafico:", e);
     }

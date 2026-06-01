@@ -14,6 +14,10 @@
     <!-- Tailwind CSS (CDN) e Foglio di Stile Personalizzato -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Leaflet.js CSS/JS (Per mappa sotto il quadrante) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden">
 
@@ -55,9 +59,11 @@
         </div>
 
         <!-- Contenitore del Canvas -->
-        <div class="relative w-full aspect-square max-w-[290px] md:max-w-[330px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl">
+        <div class="relative w-full aspect-square max-w-[290px] md:max-w-[330px] flex items-center justify-center bg-slate-950 rounded-full border border-slate-900 shadow-2xl overflow-hidden">
+            <!-- Mappa geografica in trasparenza Leaflet -->
+            <div id="dialMap" class="absolute inset-1 rounded-full overflow-hidden hidden z-0 bg-slate-950 transition-all duration-200"></div>
             <!-- Canvas ad alta risoluzione -->
-            <canvas id="dialCanvas" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
+            <canvas id="dialCanvas" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full z-10 relative"></canvas>
         </div>
 
         <!-- Indicatori Angolari Digitali di Inclinazione del Telefono -->
@@ -71,6 +77,60 @@
     <footer class="w-full p-4 bg-slate-900 border-t border-slate-800 backdrop-blur-md z-10 flex flex-col gap-2.5">
         <div class="max-w-md mx-auto w-full flex flex-col gap-2.5">
             
+            <!-- Configurazione Mappa ed Azimut Personalizzato -->
+            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">
+                    <span>Mappa & Azimut</span>
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" id="check-map-active" class="sr-only peer">
+                        <div class="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-600 peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                        <span class="ms-1.5 text-[10px] font-bold text-slate-455 uppercase">Attiva Mappa</span>
+                    </label>
+                </div>
+                
+                <!-- Sotto-controlli mappa (visibili solo se la mappa è attiva) -->
+                <div id="map-controls" class="hidden flex flex-col gap-2 border-t border-slate-900 pt-2">
+                    <div class="flex gap-2.5 items-center justify-between">
+                        <!-- Selettore tipo mappa -->
+                        <div class="flex-1 flex flex-col gap-0.5">
+                            <label for="select-map-type" class="text-[9px] text-slate-500 font-mono">Tipo Mappa</label>
+                            <select id="select-map-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none cursor-pointer">
+                                <option value="dark" selected>Siderale Dark</option>
+                                <option value="satellite">Satellite Reale</option>
+                            </select>
+                        </div>
+                        <!-- Zoom Slider -->
+                        <div class="flex-1 flex flex-col gap-0.5">
+                            <div class="flex justify-between items-center">
+                                <label for="slider-map-zoom" class="text-[9px] text-slate-500 font-mono">Zoom</label>
+                                <span id="lbl-map-zoom" class="text-[9px] text-cyan-400 font-bold font-mono">15</span>
+                            </div>
+                            <input id="slider-map-zoom" type="range" min="8" max="18" value="15" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controllo Azimut Personale -->
+                <div class="border-t border-slate-900 pt-2 flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="relative inline-flex items-center cursor-pointer select-none">
+                            <input type="checkbox" id="check-azimuth-active" class="sr-only peer">
+                            <div class="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-rose-600 peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                            <span class="ms-1.5 text-[10px] font-bold text-slate-455 uppercase">Segna Azimut</span>
+                        </label>
+                        <div id="azimuth-val-container" class="hidden items-center gap-1">
+                            <input id="input-azimuth-value" type="number" min="0" max="360" value="180" class="w-12 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center text-xs text-rose-400 font-mono focus:outline-none">
+                            <span class="text-[10px] text-slate-500 font-mono">°</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Slider Azimut (visibile solo se attivo) -->
+                    <div id="azimuth-slider-container" class="hidden flex-col gap-0.5">
+                        <input id="slider-azimuth-value" type="range" min="0" max="360" value="180" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500">
+                    </div>
+                </div>
+            </div>
+
             <!-- Coordinate Manuali ed inserimento libero -->
             <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl flex flex-col gap-2 shadow-inner">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">

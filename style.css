@@ -39,3 +39,25 @@ code, pre, .font-mono {
 .animate-pulse-soft {
     animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Stili per la Mappa Geografica Leaflet in trasparenza */
+#dialMap {
+    pointer-events: none;
+    background-color: #020617 !important;
+}
+
+/* Rimuove i controlli grafici predefiniti di Leaflet per un design minimalista e pulito */
+.leaflet-control-zoom,
+.leaflet-control-attribution {
+    display: none !important;
+}
+
+/* Stile per il marker personalizzato dell'osservatore (effetto faro radar neon) */
+.observer-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+}
+
